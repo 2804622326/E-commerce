@@ -5,13 +5,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
-import java.time.LocalDateTime;
+import org.springframework.web.context.request.WebRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * Unit tests for CustomExceptionHandler
@@ -23,43 +24,30 @@ class CustomExceptionHandlerTest {
     @InjectMocks
     private CustomExceptionHandler exceptionHandler;
 
+    @Mock
+    private WebRequest webRequest;
+
     @Test
     @DisplayName("Should handle ProductNotFoundException correctly")
     void handleProductNotFoundException_ShouldReturnNotFoundResponse() {
         // Given
         String errorMessage = "Product not found";
         ProductNotFoundException exception = new ProductNotFoundException(errorMessage);
+        WebRequest request = mock(WebRequest.class);
 
         // When
-        ResponseEntity<CustomErrorResponse> response = exceptionHandler.handleProductNotFoundException(exception);
+        ResponseEntity<Object> response = exceptionHandler.handleProductNotFoundException(exception, request);
 
         // Then
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getErrorMessage()).isEqualTo(errorMessage);
-        assertThat(response.getBody().getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND.value());
-        assertThat(response.getBody().getTimestamp()).isNotNull();
-        assertThat(response.getBody().getTimestamp()).isBeforeOrEqualTo(LocalDateTime.now());
-    }
-
-    @Test
-    @DisplayName("Should handle generic Exception correctly")
-    void handleGenericException_ShouldReturnInternalServerErrorResponse() {
-        // Given
-        String errorMessage = "Internal server error";
-        Exception exception = new Exception(errorMessage);
-
-        // When
-        ResponseEntity<CustomErrorResponse> response = exceptionHandler.handleGenericException(exception);
-
-        // Then
-        assertThat(response).isNotNull();
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getErrorMessage()).isEqualTo(errorMessage);
-        assertThat(response.getBody().getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
-        assertThat(response.getBody().getTimestamp()).isNotNull();
+        assertThat(response.getBody()).isInstanceOf(CustomErrorResponse.class);
+        
+        CustomErrorResponse errorResponse = (CustomErrorResponse) response.getBody();
+        assertThat(errorResponse.getMessage()).isEqualTo(errorMessage);
+        assertThat(errorResponse.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(errorResponse.getError()).isEqualTo("Product doesn't exist");
     }
 
     @Test
@@ -68,27 +56,31 @@ class CustomExceptionHandlerTest {
         // Given
         String customMessage = "Custom error message";
         ProductNotFoundException exception = new ProductNotFoundException(customMessage);
+        WebRequest request = mock(WebRequest.class);
 
         // When
-        ResponseEntity<CustomErrorResponse> response = exceptionHandler.handleProductNotFoundException(exception);
+        ResponseEntity<Object> response = exceptionHandler.handleProductNotFoundException(exception, request);
 
         // Then
-        assertThat(response.getBody().getErrorMessage()).isEqualTo(customMessage);
+        CustomErrorResponse errorResponse = (CustomErrorResponse) response.getBody();
+        assertThat(errorResponse).isNotNull();
+        assertThat(errorResponse.getMessage()).isEqualTo(customMessage);
     }
 
     @Test
-    @DisplayName("Should include timestamp in error response")
-    void handleException_ShouldIncludeTimestamp() {
+    @DisplayName("Should return correct HTTP status")
+    void handleException_ShouldReturnCorrectStatus() {
         // Given
-        LocalDateTime beforeHandling = LocalDateTime.now();
         ProductNotFoundException exception = new ProductNotFoundException("Error");
+        WebRequest request = mock(WebRequest.class);
 
         // When
-        ResponseEntity<CustomErrorResponse> response = exceptionHandler.handleProductNotFoundException(exception);
+        ResponseEntity<Object> response = exceptionHandler.handleProductNotFoundException(exception, request);
 
         // Then
-        LocalDateTime afterHandling = LocalDateTime.now();
-        assertThat(response.getBody().getTimestamp()).isNotNull();
-        assertThat(response.getBody().getTimestamp()).isBetween(beforeHandling.minusSeconds(1), afterHandling.plusSeconds(1));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        CustomErrorResponse errorResponse = (CustomErrorResponse) response.getBody();
+        assertThat(errorResponse).isNotNull();
+        assertThat(errorResponse.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 }
