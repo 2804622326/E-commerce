@@ -1,6 +1,5 @@
 package com.ecommerce.sportscenter.controller;
 
-import com.ecommerce.sportscenter.config.TestSecurityConfig;
 import com.ecommerce.sportscenter.entity.OrderAggregate.OrderStatus;
 import com.ecommerce.sportscenter.model.OrderDto;
 import com.ecommerce.sportscenter.model.OrderResponse;
@@ -10,9 +9,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -30,8 +32,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(OrdersController.class)
-@Import(TestSecurityConfig.class)
+@WebMvcTest(value = OrdersController.class, 
+        excludeAutoConfiguration = {SecurityAutoConfiguration.class, SecurityFilterAutoConfiguration.class},
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, 
+                classes = com.ecommerce.sportscenter.security.JwtAuthenticationFilter.class))
 class OrdersControllerTest {
 
     @Autowired
@@ -54,6 +58,8 @@ class OrdersControllerTest {
         orderResponse.setOrderStatus(OrderStatus.Pending);
         orderResponse.setSubTotal(100L);
         orderResponse.setDeliveryFee(10L);
+        orderResponse.setTotal(110.0);
+        // Don't set orderDate to avoid serialization issues in test
 
         orderDto = new OrderDto();
         orderDto.setBasketId("test-basket");
@@ -111,7 +117,8 @@ class OrdersControllerTest {
     void getAllOrdersPaged_ShouldReturnPagedOrders() throws Exception {
         // Arrange
         Pageable pageable = PageRequest.of(0, 10);
-        Page<OrderResponse> orderPage = new PageImpl<>(Arrays.asList(orderResponse));
+        List<OrderResponse> orderList = Arrays.asList(orderResponse);
+        Page<OrderResponse> orderPage = new PageImpl<>(orderList, pageable, orderList.size());
         when(orderService.getAllOrders(any(Pageable.class))).thenReturn(orderPage);
 
         // Act & Assert
