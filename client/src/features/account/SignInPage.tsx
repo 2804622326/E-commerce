@@ -1,5 +1,5 @@
 import { LoadingButton } from "@mui/lab";
-import { Container, CssBaseline, Box, Avatar, Typography, TextField, FormControlLabel, Checkbox, Grid } from "@mui/material";
+import { Container, CssBaseline, Box, Avatar, Typography, TextField, FormControlLabel, Checkbox, Grid, Link as MuiLink } from "@mui/material";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { store, useAppDispatch } from "../../app/store/configureStore";
@@ -88,13 +88,15 @@ export default function SignInPage(){
               </LoadingButton>
               <Grid container>
                 <Grid item xs>
-                  <Link to="#">
+                  <Typography variant="body2" color="textSecondary">
                     Forgot password?
-                  </Link>
+                  </Typography>
                 </Grid>
                 <Grid item>
-                  <Link to="/register">
-                    {"Don't have an account? Sign Up"}
+                  <Link to="/register" style={{ textDecoration: 'none' }}>
+                    <Typography variant="body2" color="primary">
+                      {"Don't have an account? Sign Up"}
+                    </Typography>
                   </Link>
                 </Grid>
               </Grid>

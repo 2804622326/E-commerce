@@ -38,7 +38,7 @@ class BasketService {
             }
             const itemToAdd = this.mapProductToBasket(item);
             basket.items = this.upsertItems(basket.items, itemToAdd, quantity);
-            this.setBasket(basket, dispatch);
+            await this.setBasket(basket, dispatch);
             //calculate totals 
             const totals = this.calculateTotals(basket);
             return {basket, totals};
@@ -53,7 +53,7 @@ class BasketService {
             const itemIndex = basket.items.findIndex((p)=>p.id === itemId);
             if(itemIndex!==-1){
                 basket.items.splice(itemIndex, 1);
-                this.setBasket(basket, dispatch);
+                await this.setBasket(basket, dispatch);
             }
             //check if basket is empty after removing the item
             if(basket.items.length === 0){
@@ -73,7 +73,7 @@ class BasketService {
                 if(item.quantity<1){
                     item.quantity = 1;
                 }
-                this.setBasket(basket, dispatch);
+                await this.setBasket(basket, dispatch);
             }
         }
     }
@@ -82,9 +82,16 @@ class BasketService {
         const basket = this.getCurrentBasket();
         if(basket){
             const item = basket.items.find((p)=>p.id === itemId);
-            if(item && item.quantity >1){
+            if(item && item.quantity > 1){
+                // If requested decrement is greater than or equal to current quantity, do not change
+                if (quantity >= item.quantity) {
+                    return;
+                }
                 item.quantity -= quantity;
-                this.setBasket(basket, dispatch);
+                if (item.quantity < 1) {
+                    item.quantity = 1;
+                }
+                await this.setBasket(basket, dispatch);
             }
         }
     }

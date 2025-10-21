@@ -4,7 +4,7 @@ import { Provider } from 'react-redux';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import { basketSlice } from '../../features/basket/basketSlice';
-import { accountSlice } from '../../features/account/accountSlice';
+import accountSlice from '../../features/account/accountSlice';
 
 interface ExtendedRenderOptions extends Omit<RenderOptions, 'queries'> {
   preloadedState?: any;

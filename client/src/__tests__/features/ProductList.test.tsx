@@ -1,7 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../utils/test-utils';
 import ProductList from '../../features/catalog/ProductList';
+
+// Mock the account slice to avoid import issues
+vi.mock('../../features/account/accountSlice', () => ({
+  default: {
+    reducer: vi.fn((state = { user: null, error: null }) => state),
+    actions: {
+      logOut: vi.fn(),
+      clearError: vi.fn()
+    }
+  }
+}));
 
 describe('ProductList Component', () => {
   const mockProducts = [
