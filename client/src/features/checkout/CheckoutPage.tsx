@@ -11,12 +11,12 @@ import {
   import AddressForm from "./AddressForm";
   import PaymentForm from "./PaymentForm";
   import Review from "./Review";
-  import { FieldValues, FormProvider, useForm } from "react-hook-form";
+  import { FormProvider, useForm } from "react-hook-form";
   import { yupResolver } from "@hookform/resolvers/yup";
-  
-  import { Basket, BasketItem } from "../../app/models/basket";
-  import { toast } from "react-toastify";
   import agent from "../../app/api/agent";
+  import { toast } from "react-toastify";
+  
+      import { BasketItem } from "../../app/models/basket";
   import { useAppDispatch } from "../../app/store/configureStore";
   import { setBasket } from "../basket/basketSlice";
 import { ValidationRules } from "./validationRules";
@@ -155,6 +155,7 @@ import { ValidationRules } from "./validationRules";
                     variant="contained"
                     onClick={handleNext}
                     sx={{ mt: 3, ml: 1 }}
+                    disabled={loading}
                   >
                     {activeStep === steps.length - 1 ? "Place order" : "Next"}
                   </Button>

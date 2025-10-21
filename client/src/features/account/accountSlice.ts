@@ -31,7 +31,7 @@ export const signInUser = createAsyncThunk<User, FieldValues>(
 
 export const fetchCurrentUser = createAsyncThunk<User | null>(
     'auth/fetchCurrentUser',
-    async(_, thunkAPI) =>{
+    async() =>{
         try{
             //Retrieve user data from local storage
             const userString = localStorage.getItem('user');
@@ -50,7 +50,7 @@ export const fetchCurrentUser = createAsyncThunk<User | null>(
 
 export const logoutUser = createAsyncThunk<void>(
     'auth/logout',
-    async(_, thunkAPI) =>{
+    async() =>{
         try{
             //Remove user from local storage
             localStorage.removeItem('user');

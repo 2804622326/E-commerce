@@ -10,11 +10,11 @@ export default function RegisterPage(){
     password: ''
   });
 
-  const handleChange = (e) =>{
-    const {name, value} = e.target;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>{
+    const {name, value} = e.target as HTMLInputElement;
     setFormData({...formData, [name]: value});
   }
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log(formData);
   }
@@ -81,7 +81,7 @@ export default function RegisterPage(){
               </Button>
               <Grid container justifyContent="flex-end">
                 <Grid item>
-                  <Link href="/login" variant="body2">
+                  <Link to="/login">
                     Already have an account? Sign in
                   </Link>
                 </Grid>

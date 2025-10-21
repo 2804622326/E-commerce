@@ -88,12 +88,12 @@ export default function SignInPage(){
               </LoadingButton>
               <Grid container>
                 <Grid item xs>
-                  <Link href="#" variant="body2">
+                  <Link to="#">
                     Forgot password?
                   </Link>
                 </Grid>
                 <Grid item>
-                  <Link href="/register" variant="body2">
+                  <Link to="/register">
                     {"Don't have an account? Sign Up"}
                   </Link>
                 </Grid>

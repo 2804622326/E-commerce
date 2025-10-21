@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+client/coverage/
+client/coverage/*
+client/coverage/
+coverage/

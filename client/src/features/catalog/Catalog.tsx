@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent } from "react";
+import { useState, useEffect } from "react";
 import { Product } from "../../app/models/product";
 import ProductList from "./ProductList";
 import agent from "../../app/api/agent";
@@ -47,7 +47,7 @@ export default function Catalog(){
     .catch((error)=>console.error(error))
     .finally(()=>setLoading(false));
   }, [currentPage, pageSize]);
-  const loadProducts = (selectedSort, searchKeyword='') =>{
+  const loadProducts = (selectedSort: string, searchKeyword: string = '') =>{
     setLoading(true);
     let page = currentPage -1;
     let size = pageSize;
@@ -89,13 +89,13 @@ export default function Catalog(){
     loadProducts(selectedSort);
   }, [selectedBrandId, selectedTypeId]);
   
-  const handleSortChange = (event: any) =>{
+  const handleSortChange = (event: React.ChangeEvent<HTMLInputElement>) =>{
     const selectedSort = event.target.value;
     setSelectedSort(selectedSort); 
     loadProducts(selectedSort);
   };
 
-  const handleBrandChange = (event: any) =>{
+  const handleBrandChange = (event: React.ChangeEvent<HTMLInputElement>) =>{
     const selectedBrand = event.target.value;
     const brand = brands.find((b)=>b.name === selectedBrand);
     setSelectedBrand(selectedBrand)
@@ -105,7 +105,7 @@ export default function Catalog(){
     }    
   };
 
-  const handleTypeChange = (event: any) =>{
+  const handleTypeChange = (event: React.ChangeEvent<HTMLInputElement>) =>{
     const selectedType = event.target.value;
     const type = types.find((t)=>t.name === selectedType);
     setSelectedType(selectedType)
@@ -114,7 +114,7 @@ export default function Catalog(){
       loadProducts(selectedSort);
     }    
   };
-  const handlePageChange = (event, page) =>{
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) =>{
     setCurrentPage(page);
   }
   if(!products) return <h3>Unable to load Products</h3>
