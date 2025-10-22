@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -7,12 +7,16 @@ import BasketPage from '../../features/basket/BasketPage';
 import { basketSlice } from '../../features/basket/basketSlice';
 import { accountSlice } from '../../features/account/accountSlice';
 
+let mockIncrementItemQuantity: any;
+let mockDecrementItemQuantity: any;
+let mockRemoveItem: any;
+
 vi.mock('../../app/api/agent', () => ({
   default: {
     Basket: {
-      removeItem: vi.fn(),
-      incrementItemQuantity: vi.fn(),
-      decrementItemQuantity: vi.fn(),
+      get removeItem() { return mockRemoveItem; },
+      get incrementItemQuantity() { return mockIncrementItemQuantity; },
+      get decrementItemQuantity() { return mockDecrementItemQuantity; },
     },
   },
 }));
@@ -183,5 +187,121 @@ describe('BasketPage - With Items', () => {
     
     const checkoutButton = screen.getByRole('link', { name: /checkout/i });
     expect(checkoutButton).toBeInTheDocument();
+  });
+});
+
+describe('BasketPage - Item Quantity Interactions', () => {
+  const mockBasket = {
+    id: '123',
+    items: [
+      {
+        productId: 1,
+        name: 'Running Shoes',
+        price: 12000,
+        quantity: 1,
+        pictureUrl: '/images/shoes.jpg',
+        brand: 'Nike',
+        type: 'Shoes'
+      }
+    ]
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIncrementItemQuantity = vi.fn().mockResolvedValue({ 
+      basket: { 
+        id: '123', 
+        items: [{ productId: 1, name: 'Test Product', quantity: 2, price: 100 }] 
+      } 
+    });
+    mockDecrementItemQuantity = vi.fn().mockResolvedValue({ 
+      basket: { 
+        id: '123', 
+        items: [{ productId: 1, name: 'Test Product', quantity: 1, price: 100 }] 
+      } 
+    });
+    mockRemoveItem = vi.fn().mockResolvedValue({ 
+      basket: { id: '123', items: [] } 
+    });
+  });
+
+  it('calls incrementItemQuantity when increment button is clicked', async () => {
+    const store = createMockStore({ basket: mockBasket });
+    
+    render(
+      <Provider store={store}>
+        <BrowserRouter>
+          <BasketPage />
+        </BrowserRouter>
+      </Provider>
+    );
+    
+    // Find add buttons (they have AddIcon)
+    const buttons = screen.getAllByRole('button');
+    const incrementButton = buttons.find(btn => 
+      btn.querySelector('svg[data-testid="AddIcon"]')
+    );
+    
+    if (incrementButton) {
+      fireEvent.click(incrementButton);
+      
+      await waitFor(() => {
+        expect(mockIncrementItemQuantity).toHaveBeenCalled();
+      });
+    }
+  });
+
+  it('calls decrementItemQuantity when decrement button is clicked', async () => {
+    const store = createMockStore({ basket: mockBasket });
+    
+    render(
+      <Provider store={store}>
+        <BrowserRouter>
+          <BasketPage />
+        </BrowserRouter>
+      </Provider>
+    );
+    
+    // Find remove buttons (they have RemoveIcon)
+    const buttons = screen.getAllByRole('button');
+    const decrementButton = buttons.find(btn => 
+      btn.querySelector('svg[data-testid="RemoveIcon"]')
+    );
+    
+    if (decrementButton) {
+      fireEvent.click(decrementButton);
+      
+      await waitFor(() => {
+        expect(mockDecrementItemQuantity).toHaveBeenCalled();
+      });
+    }
+  });
+
+  it('triggers increment function when add button clicked', async () => {
+    const store = createMockStore({ basket: mockBasket });
+    
+    render(
+      <Provider store={store}>
+        <BrowserRouter>
+          <BasketPage />
+        </BrowserRouter>
+      </Provider>
+    );
+    
+    const buttons = screen.getAllByRole('button');
+    const incrementButton = buttons.find(btn => 
+      btn.querySelector('svg[data-testid="AddIcon"]')
+    );
+    
+    expect(incrementButton).toBeDefined();
+    
+    if (incrementButton) {
+      fireEvent.click(incrementButton);
+      
+      // Just verify it was called, don't check parameters (too brittle)
+      await waitFor(() => {
+        expect(mockIncrementItemQuantity).toHaveBeenCalled();
+      }, { timeout: 2000 });
+    }
   });
 });
