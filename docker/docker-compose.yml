@@ -1,25 +1,93 @@
-version: '3.1'
+version: '3.8'
 
 services:
   sportscenter-mysql:
-    image: mysql
+    image: mysql:latest
     restart: always
     container_name: "sports-center-mysql"
     environment:
       MYSQL_ROOT_PASSWORD: 'password'
+      MYSQL_DATABASE: 'sportscenter'
     ports:
       - "3306:3306"
     volumes:
       - ./data.sql:/docker-entrypoint-initdb.d/data.sql
       - sports-center-mysql-data:/var/lib/mysql
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   sportscenter-redis:
     image: "redis:latest"
-    container_name: "sports-center-redis-container"
+    restart: always
+    container_name: "sports-center-redis"
     ports:
       - "6379:6379"
     volumes:
       - sports-center-redis-data:/data
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  sportscenter-backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    restart: always
+    container_name: "sports-center-backend"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://sportscenter-mysql:3306/sportscenter?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_REDIS_HOST: sportscenter-redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8080:8081"
+    depends_on:
+      sportscenter-mysql:
+        condition: service_healthy
+      sportscenter-redis:
+        condition: service_healthy
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/api/products?PageSize=1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  sportscenter-frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    restart: always
+    container_name: "sports-center-frontend"
+    ports:
+      - "80:80"
+    depends_on:
+      sportscenter-backend:
+        condition: service_healthy
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+networks:
+  sportscenter-network:
+    driver: bridge
 
 volumes:
   sports-center-redis-data:

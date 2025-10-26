@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
 import PaymentForm from '../../features/checkout/PaymentForm';
@@ -125,13 +125,6 @@ describe('PaymentForm Component', () => {
   });
 
   it('displays error states when errors are present', () => {
-    const errors = {
-      cardName: { message: 'Name is required' },
-      cardNumber: { message: 'Card number is required' },
-      expiryDate: { message: 'Expiry date is required' },
-      cvv: { message: 'CVV is required' },
-    };
-
     render(
       <TestWrapper>
         <PaymentForm />
