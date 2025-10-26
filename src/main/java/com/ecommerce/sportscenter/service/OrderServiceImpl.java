@@ -3,6 +3,7 @@ package com.ecommerce.sportscenter.service;
 import com.ecommerce.sportscenter.entity.OrderAggregate.Order;
 import com.ecommerce.sportscenter.entity.OrderAggregate.OrderItem;
 import com.ecommerce.sportscenter.entity.OrderAggregate.ProductItemOrdered;
+import com.ecommerce.sportscenter.exceptions.OrderNotFoundException;
 import com.ecommerce.sportscenter.mapper.OrderMapper;
 import com.ecommerce.sportscenter.model.BasketItemResponse;
 import com.ecommerce.sportscenter.model.BasketResponse;
@@ -39,8 +40,11 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponse getOrderById(Integer orderId) {
-        Optional<Order> optionalOrder = orderRepository.findById(orderId);
-        return optionalOrder.map(orderMapper::OrderToOrderResponse).orElse(null);
+        log.info("Fetching Order by Id: {}", orderId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order with ID " + orderId + " not found"));
+        log.info("Fetched Order by Id: {}", orderId);
+        return orderMapper.OrderToOrderResponse(order);
     }
 
     @Override
@@ -57,17 +61,26 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public void deleteOrder(Integer orderId) {
+        log.info("Deleting Order by Id: {}", orderId);
+        if (!orderRepository.existsById(orderId)) {
+            throw new OrderNotFoundException("Order with ID " + orderId + " not found");
+        }
         orderRepository.deleteById(orderId);
+        log.info("Deleted Order by Id: {}", orderId);
     }
 
     @Override
     public Integer createOrder(OrderDto orderDto) {
-        //Fetching Basket details
+        log.info("Creating Order for Basket Id: {}", orderDto.getBasketId());
+        // Fetching Basket details - will throw BasketNotFoundException if not found
         BasketResponse basketResponse = basketService.getBasketById(orderDto.getBasketId());
-        if(basketResponse == null){
-            log.error("Basket with ID {} not found", orderDto.getBasketId());
-            return null;
+        
+        // Validate basket has items
+        if(basketResponse.getItems() == null || basketResponse.getItems().isEmpty()){
+            log.error("Basket with ID {} has no items", orderDto.getBasketId());
+            throw new IllegalArgumentException("Cannot create order: Basket is empty");
         }
+        
         //Map basket items to order items
         List<OrderItem> orderItems = basketResponse.getItems().stream()
                 .map(this::mapBasketItemToOrderItem)
@@ -85,6 +98,7 @@ public class OrderServiceImpl implements OrderService {
         //save the order
         Order savedOrder = orderRepository.save(order);
         basketService.deleteBasketById(orderDto.getBasketId());
+        log.info("Order created with Id: {}", savedOrder.getId());
         //return the response
         return savedOrder.getId();
     }

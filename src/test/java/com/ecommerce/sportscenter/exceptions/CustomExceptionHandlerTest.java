@@ -47,7 +47,7 @@ class CustomExceptionHandlerTest {
         CustomErrorResponse errorResponse = (CustomErrorResponse) response.getBody();
         assertThat(errorResponse.getMessage()).isEqualTo(errorMessage);
         assertThat(errorResponse.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(errorResponse.getError()).isEqualTo("Product doesn't exist");
+        assertThat(errorResponse.getError()).isEqualTo("Product Not Found");
     }
 
     @Test

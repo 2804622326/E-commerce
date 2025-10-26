@@ -2,6 +2,8 @@ package com.ecommerce.sportscenter.service;
 
 import com.ecommerce.sportscenter.entity.Basket;
 import com.ecommerce.sportscenter.entity.BasketItem;
+import com.ecommerce.sportscenter.exceptions.BasketAlreadyExistsException;
+import com.ecommerce.sportscenter.exceptions.BasketNotFoundException;
 import com.ecommerce.sportscenter.model.BasketItemResponse;
 import com.ecommerce.sportscenter.model.BasketResponse;
 import com.ecommerce.sportscenter.repository.BasketRepository;
@@ -36,27 +38,29 @@ public class BasketServiceImpl implements BasketService{
     @Override
     public BasketResponse getBasketById(String basketId) {
         log.info("Fetching Basket by Id: {}", basketId);
-        Optional<Basket> basketOptional = basketRepository.findById(basketId);
-        if(basketOptional.isPresent()){
-            Basket basket = basketOptional.get();
-            log.info("Fetched Basket by Id: {}", basketId);
-            return convertToBasketResponse(basket);
-        }else{
-            log.info("Basket with Id: {} not found", basketId);
-            return null;
-        }
+        Basket basket = basketRepository.findById(basketId)
+                .orElseThrow(() -> new BasketNotFoundException("Basket with ID " + basketId + " not found"));
+        log.info("Fetched Basket by Id: {}", basketId);
+        return convertToBasketResponse(basket);
     }
 
     @Override
     public void deleteBasketById(String basketId) {
         log.info("Deleting Basket by Id: {}", basketId);
+        if (!basketRepository.existsById(basketId)) {
+            throw new BasketNotFoundException("Basket with ID " + basketId + " not found");
+        }
         basketRepository.deleteById(basketId);
         log.info("Deleted Basket by Id: {}", basketId);
     }
 
     @Override
     public BasketResponse createBasket(Basket basket) {
-        log.info("Creating Basket");
+        log.info("Creating Basket with ID: {}", basket.getId());
+        // Check if basket already exists
+        if (basket.getId() != null && basketRepository.existsById(basket.getId())) {
+            throw new BasketAlreadyExistsException("Basket with ID " + basket.getId() + " already exists");
+        }
         Basket savedBasket = basketRepository.save(basket);
         log.info("Basket created with Id: {}", savedBasket.getId());
         return convertToBasketResponse(savedBasket);

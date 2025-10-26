@@ -2,6 +2,8 @@ package com.ecommerce.sportscenter.service;
 
 import com.ecommerce.sportscenter.entity.Basket;
 import com.ecommerce.sportscenter.entity.BasketItem;
+import com.ecommerce.sportscenter.exceptions.BasketAlreadyExistsException;
+import com.ecommerce.sportscenter.exceptions.BasketNotFoundException;
 import com.ecommerce.sportscenter.model.BasketResponse;
 import com.ecommerce.sportscenter.repository.BasketRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -109,17 +112,16 @@ class BasketServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should return null when basket does not exist")
-    void getBasketById_WhenBasketDoesNotExist_ShouldReturnNull() {
+    @DisplayName("Should throw BasketNotFoundException when basket does not exist")
+    void getBasketById_WhenBasketDoesNotExist_ShouldThrowException() {
         // Given
         String basketId = "non-existent-basket";
         when(basketRepository.findById(basketId)).thenReturn(Optional.empty());
 
-        // When
-        BasketResponse result = basketService.getBasketById(basketId);
-
-        // Then
-        assertThat(result).isNull();
+        // When & Then
+        assertThatThrownBy(() -> basketService.getBasketById(basketId))
+                .isInstanceOf(BasketNotFoundException.class)
+                .hasMessageContaining("Basket with ID " + basketId + " not found");
 
         verify(basketRepository, times(1)).findById(basketId);
     }
@@ -129,13 +131,31 @@ class BasketServiceImplTest {
     void deleteBasketById_ShouldCallRepositoryDelete() {
         // Given
         String basketId = "test-basket-id";
+        when(basketRepository.existsById(basketId)).thenReturn(true);
         doNothing().when(basketRepository).deleteById(basketId);
 
         // When
         basketService.deleteBasketById(basketId);
 
         // Then
+        verify(basketRepository, times(1)).existsById(basketId);
         verify(basketRepository, times(1)).deleteById(basketId);
+    }
+
+    @Test
+    @DisplayName("Should throw BasketNotFoundException when deleting non-existent basket")
+    void deleteBasketById_WhenBasketDoesNotExist_ShouldThrowException() {
+        // Given
+        String basketId = "non-existent-basket";
+        when(basketRepository.existsById(basketId)).thenReturn(false);
+
+        // When & Then
+        assertThatThrownBy(() -> basketService.deleteBasketById(basketId))
+                .isInstanceOf(BasketNotFoundException.class)
+                .hasMessageContaining("Basket with ID " + basketId + " not found");
+
+        verify(basketRepository, times(1)).existsById(basketId);
+        verify(basketRepository, never()).deleteById(anyString());
     }
 
     @Test
@@ -143,6 +163,7 @@ class BasketServiceImplTest {
     void createBasket_ShouldReturnCreatedBasket() {
         // Given
         Basket newBasket = new Basket("new-basket-id");
+        when(basketRepository.existsById("new-basket-id")).thenReturn(false);
         when(basketRepository.save(any(Basket.class))).thenReturn(testBasket);
 
         // When
@@ -153,7 +174,24 @@ class BasketServiceImplTest {
         assertThat(result.getId()).isEqualTo("test-basket-id");
         assertThat(result.getItems()).hasSize(1);
 
+        verify(basketRepository, times(1)).existsById("new-basket-id");
         verify(basketRepository, times(1)).save(newBasket);
+    }
+
+    @Test
+    @DisplayName("Should throw BasketAlreadyExistsException when creating basket with existing ID")
+    void createBasket_WhenBasketExists_ShouldThrowException() {
+        // Given
+        Basket existingBasket = new Basket("existing-basket-id");
+        when(basketRepository.existsById("existing-basket-id")).thenReturn(true);
+
+        // When & Then
+        assertThatThrownBy(() -> basketService.createBasket(existingBasket))
+                .isInstanceOf(BasketAlreadyExistsException.class)
+                .hasMessageContaining("Basket with ID existing-basket-id already exists");
+
+        verify(basketRepository, times(1)).existsById("existing-basket-id");
+        verify(basketRepository, never()).save(any(Basket.class));
     }
 
     @Test

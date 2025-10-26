@@ -2,6 +2,8 @@ package com.ecommerce.sportscenter.service;
 
 import com.ecommerce.sportscenter.entity.OrderAggregate.Order;
 import com.ecommerce.sportscenter.entity.OrderAggregate.OrderStatus;
+import com.ecommerce.sportscenter.exceptions.BasketNotFoundException;
+import com.ecommerce.sportscenter.exceptions.OrderNotFoundException;
 import com.ecommerce.sportscenter.mapper.OrderMapper;
 import com.ecommerce.sportscenter.model.BasketItemResponse;
 import com.ecommerce.sportscenter.model.BasketResponse;
@@ -28,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
@@ -114,16 +117,16 @@ class OrderServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should return null when order not found")
-    void getOrderById_ShouldReturnNull_WhenOrderNotFound() {
+    @DisplayName("Should throw OrderNotFoundException when order not found")
+    void getOrderById_ShouldThrowException_WhenOrderNotFound() {
         // Arrange
         when(orderRepository.findById(999)).thenReturn(Optional.empty());
 
-        // Act
-        OrderResponse result = orderService.getOrderById(999);
-
-        // Assert
-        assertThat(result).isNull();
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.getOrderById(999))
+                .isInstanceOf(OrderNotFoundException.class)
+                .hasMessageContaining("Order with ID 999 not found");
+        
         verify(orderRepository).findById(999);
         verify(orderMapper, never()).OrderToOrderResponse(any());
     }
@@ -181,13 +184,30 @@ class OrderServiceImplTest {
     @DisplayName("Should delete order successfully")
     void deleteOrder_ShouldCallRepository() {
         // Arrange
+        when(orderRepository.existsById(1)).thenReturn(true);
         doNothing().when(orderRepository).deleteById(1);
 
         // Act
         orderService.deleteOrder(1);
 
         // Assert
+        verify(orderRepository).existsById(1);
         verify(orderRepository).deleteById(1);
+    }
+
+    @Test
+    @DisplayName("Should throw OrderNotFoundException when deleting non-existent order")
+    void deleteOrder_ShouldThrowException_WhenOrderNotFound() {
+        // Arrange
+        when(orderRepository.existsById(999)).thenReturn(false);
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.deleteOrder(999))
+                .isInstanceOf(OrderNotFoundException.class)
+                .hasMessageContaining("Order with ID 999 not found");
+        
+        verify(orderRepository).existsById(999);
+        verify(orderRepository, never()).deleteById(anyInt());
     }
 
     @Test
@@ -211,26 +231,27 @@ class OrderServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should return null when basket not found during order creation")
-    void createOrder_ShouldReturnNull_WhenBasketNotFound() {
+    @DisplayName("Should throw BasketNotFoundException when basket not found during order creation")
+    void createOrder_ShouldThrowException_WhenBasketNotFound() {
         // Arrange
         OrderDto nonExistentOrderDto = new OrderDto();
         nonExistentOrderDto.setBasketId("non-existent-basket");
-        when(basketService.getBasketById("non-existent-basket")).thenReturn(null);
+        when(basketService.getBasketById("non-existent-basket"))
+            .thenThrow(new BasketNotFoundException("Basket with ID non-existent-basket not found"));
 
-        // Act
-        Integer result = orderService.createOrder(nonExistentOrderDto);
-
-        // Assert
-        assertThat(result).isNull();
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.createOrder(nonExistentOrderDto))
+            .isInstanceOf(BasketNotFoundException.class)
+            .hasMessageContaining("Basket with ID non-existent-basket not found");
+        
         verify(basketService).getBasketById("non-existent-basket");
         verify(orderRepository, never()).save(any());
         verify(basketService, never()).deleteBasketById(anyString());
     }
 
     @Test
-    @DisplayName("Should handle empty basket items during order creation")
-    void createOrder_ShouldHandleEmptyBasket() {
+    @DisplayName("Should throw IllegalArgumentException when basket is empty")
+    void createOrder_ShouldThrowException_WhenBasketIsEmpty() {
         // Arrange
         BasketResponse emptyBasket = new BasketResponse();
         emptyBasket.setId("empty-basket");
@@ -241,17 +262,14 @@ class OrderServiceImplTest {
         emptyOrderDto.setSubTotal(0L);
 
         when(basketService.getBasketById("empty-basket")).thenReturn(emptyBasket);
-        when(orderMapper.orderResponseToOrder(any(OrderDto.class))).thenReturn(order);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        doNothing().when(basketService).deleteBasketById("empty-basket");
 
-        // Act
-        Integer result = orderService.createOrder(emptyOrderDto);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result).isEqualTo(1);
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.createOrder(emptyOrderDto))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Basket is empty");
+        
         verify(basketService).getBasketById("empty-basket");
-        verify(orderRepository).save(any(Order.class));
+        verify(orderRepository, never()).save(any(Order.class));
+        verify(basketService, never()).deleteBasketById(anyString());
     }
 }
