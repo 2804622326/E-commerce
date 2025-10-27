@@ -3,10 +3,15 @@ package com.ecommerce.sportscenter.exceptions;
 import com.ecommerce.sportscenter.model.CustomErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @ControllerAdvice
 public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
@@ -69,5 +74,25 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getMessage()
         );
         return new ResponseEntity<>(customErrorResponse, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request){
+        CustomErrorResponse customErrorResponse = new CustomErrorResponse(
+                HttpStatus.BAD_REQUEST, 
+                "Invalid Argument", 
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(customErrorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleGlobalException(Exception ex, WebRequest request){
+        CustomErrorResponse customErrorResponse = new CustomErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR, 
+                "Internal Server Error", 
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(customErrorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

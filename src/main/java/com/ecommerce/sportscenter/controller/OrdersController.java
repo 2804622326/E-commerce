@@ -24,11 +24,7 @@ public class OrdersController {
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable Integer orderId){
         OrderResponse order = orderService.getOrderById(orderId);
-        if(order!=null){
-            return ResponseEntity.ok(order);
-        }else{
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(order);
     }
     @GetMapping
     public ResponseEntity<List<OrderResponse>> getAllOrders(){
@@ -45,11 +41,7 @@ public class OrdersController {
     @PostMapping
     public ResponseEntity<Integer> createOrder(@Valid @RequestBody OrderDto orderDto){
         Integer orderId = orderService.createOrder(orderDto);
-        if(orderId!=null){
-            return ResponseEntity.status(HttpStatus.CREATED).body(orderId);
-        }else{
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(orderId);
     }
 
     @DeleteMapping("/{orderId}")

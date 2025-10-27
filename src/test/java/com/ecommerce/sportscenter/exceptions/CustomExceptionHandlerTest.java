@@ -83,4 +83,48 @@ class CustomExceptionHandlerTest {
         assertThat(errorResponse).isNotNull();
         assertThat(errorResponse.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
     }
+
+    @Test
+    @DisplayName("Should handle IllegalArgumentException with BAD_REQUEST status")
+    void handleIllegalArgumentException_ShouldReturnBadRequest() {
+        // Given
+        String errorMessage = "Invalid argument provided";
+        IllegalArgumentException exception = new IllegalArgumentException(errorMessage);
+        WebRequest request = mock(WebRequest.class);
+
+        // When
+        ResponseEntity<Object> response = exceptionHandler.handleIllegalArgumentException(exception, request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isInstanceOf(CustomErrorResponse.class);
+        
+        CustomErrorResponse errorResponse = (CustomErrorResponse) response.getBody();
+        assertThat(errorResponse.getMessage()).isEqualTo(errorMessage);
+        assertThat(errorResponse.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(errorResponse.getError()).isEqualTo("Invalid Argument");
+    }
+
+    @Test
+    @DisplayName("Should handle generic Exception with INTERNAL_SERVER_ERROR status")
+    void handleGlobalException_ShouldReturnInternalServerError() {
+        // Given
+        String errorMessage = "Unexpected error occurred";
+        Exception exception = new Exception(errorMessage);
+        WebRequest request = mock(WebRequest.class);
+
+        // When
+        ResponseEntity<Object> response = exceptionHandler.handleGlobalException(exception, request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isInstanceOf(CustomErrorResponse.class);
+        
+        CustomErrorResponse errorResponse = (CustomErrorResponse) response.getBody();
+        assertThat(errorResponse.getMessage()).isEqualTo(errorMessage);
+        assertThat(errorResponse.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(errorResponse.getError()).isEqualTo("Internal Server Error");
+    }
 }

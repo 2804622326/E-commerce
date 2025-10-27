@@ -22,17 +22,21 @@ public class BasketController {
     }
 
     @GetMapping
-    public List<BasketResponse> getAllBaskets() {
-        return basketService.getAllBaskets();
+    public ResponseEntity<List<BasketResponse>> getAllBaskets() {
+        List<BasketResponse> baskets = basketService.getAllBaskets();
+        return ResponseEntity.ok(baskets);
     }
 
     @GetMapping("/{basketId}")
-    public BasketResponse getBasketById(@PathVariable String basketId){
-        return basketService.getBasketById(basketId);
+    public ResponseEntity<BasketResponse> getBasketById(@PathVariable String basketId){
+        BasketResponse basket = basketService.getBasketById(basketId);
+        return ResponseEntity.ok(basket);
     }
+    
     @DeleteMapping("/{basketId}")
-    public void deleteBasketById(@PathVariable String basketId){
+    public ResponseEntity<Void> deleteBasketById(@PathVariable String basketId){
         basketService.deleteBasketById(basketId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping
