@@ -80,23 +80,20 @@ export default function Catalog(){
   // Load products whenever page, sort, brand, or type changes
   useEffect(()=>{
     setLoading(true);
-    let page = currentPage -1;
-    let size = pageSize;
-    let brandId = selectedBrandId !==0 ? selectedBrandId : undefined;
-    let typeId = selectedTypeId !==0 ? selectedTypeId : undefined;
+    const page = currentPage - 1;
+    const size = pageSize;
+    const brandId = selectedBrandId !== 0 ? selectedBrandId : undefined;
+    const typeId = selectedTypeId !== 0 ? selectedTypeId : undefined;
     const sort = "name";
     const order = selectedSort === "desc" ? "desc" : "asc"; 
-    //construct the url
-    let url = `${agent.Store.apiUrl}?sort=${sort}&order=${order}`;
-    if(brandId !== undefined || typeId !== undefined){
-      url+='&';
-      if(brandId!== undefined) url += `brandId=${brandId}&`;
-      if(typeId!== undefined) url += `typeId=${typeId}&`;
-      //Remove trailing &
-      url = url.replace(/&$/, "");
-    }
-    //Make the API request with the url
-    agent.Store.list(page, size, undefined, undefined, url)
+    
+    // Construct the URL with sort and order parameters
+    let url = `${agent.Store.apiUrl}?page=${page}&size=${size}&sort=${sort}&order=${order}`;
+    if(brandId !== undefined) url += `&brandId=${brandId}`;
+    if(typeId !== undefined) url += `&typeId=${typeId}`;
+    
+    // Make the API request
+    agent.Store.list(page, size, brandId, typeId, url)
       .then((productsRes)=>{
         setProducts(productsRes.content);
         setTotaItems(productsRes.totalElements);
@@ -106,8 +103,9 @@ export default function Catalog(){
   }, [currentPage, selectedBrandId, selectedTypeId, selectedSort, pageSize]);
   
   const handleSortChange = (event: React.ChangeEvent<HTMLInputElement>) =>{
-    const selectedSort = event.target.value;
-    setSelectedSort(selectedSort);
+    const newSort = event.target.value;
+    setSelectedSort(newSort);
+    setCurrentPage(1); // Reset to first page when changing sort order
   };
 
   const handleBrandChange = (event: React.ChangeEvent<HTMLInputElement>) =>{
@@ -116,6 +114,7 @@ export default function Catalog(){
     setSelectedBrand(selectedBrand)
     if(brand){
       setSelectedBrandId(brand.id);
+      setCurrentPage(1); // Reset to first page when changing brand filter
     }    
   };
 
@@ -125,6 +124,7 @@ export default function Catalog(){
     setSelectedType(selectedType)
     if(type){
       setSelectedTypeId(type.id);
+      setCurrentPage(1); // Reset to first page when changing type filter
     }    
   };
   const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) =>{
