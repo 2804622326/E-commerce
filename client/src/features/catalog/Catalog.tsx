@@ -39,44 +39,6 @@ export default function Catalog(){
     .catch((error)=>console.error(error));
   }, []);
 
-  const loadProducts = (selectedSort: string, searchKeyword: string = '') =>{
-    setLoading(true);
-    let page = currentPage -1;
-    let size = pageSize;
-    let brandId = selectedBrandId !==0 ? selectedBrandId : undefined;
-    let typeId = selectedTypeId !==0 ? selectedTypeId : undefined;
-    const sort = "name";
-    const order = selectedSort === "desc" ? "desc" : "asc"; 
-    //construct the url
-    let url = `${agent.Store.apiUrl}?sort=${sort}&order=${order}`;
-    if(brandId !== undefined || typeId !== undefined){
-      url+='&';
-      if(brandId!== undefined) url += `brandId=${brandId}&`;
-      if(typeId!== undefined) url += `typeId=${typeId}&`;
-      //Remove trailing &
-      url = url.replace(/&$/, "");
-    }
-    //Make the API request with the url
-    if(searchKeyword){
-      console.log(searchKeyword);
-      agent.Store.search(searchKeyword)
-        .then((productsRes)=>{
-          setProducts(productsRes.content);
-          setTotaItems(productsRes.length);
-        })
-        .catch((error)=>console.error(error))
-        .finally(()=> setLoading(false));
-    }else{
-      agent.Store.list(page, size, undefined, undefined, url)
-        .then((productsRes)=>{
-          setProducts(productsRes.content);
-          setTotaItems(productsRes.totalElements);
-        })
-        .catch((error)=>console.error(error))
-        .finally(()=> setLoading(false));
-    }
-  }
-
   // Load products whenever page, sort, brand, or type changes
   useEffect(()=>{
     setLoading(true);
@@ -87,8 +49,8 @@ export default function Catalog(){
     const sort = "name";
     const order = selectedSort === "desc" ? "desc" : "asc"; 
     
-    // Construct the URL with sort and order parameters
-    let url = `${agent.Store.apiUrl}?page=${page}&size=${size}&sort=${sort}&order=${order}`;
+    // Construct the relative URL path (without apiUrl prefix)
+    let url = `products?page=${page}&size=${size}&sort=${sort}&order=${order}`;
     if(brandId !== undefined) url += `&brandId=${brandId}`;
     if(typeId !== undefined) url += `&typeId=${typeId}`;
     
@@ -154,8 +116,8 @@ export default function Catalog(){
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              // Trigger search action
-             loadProducts(selectedSort, searchTerm); // Pass the search term to loadProducts
+              // TODO: Implement search functionality
+              console.log('Search for:', searchTerm);
             }
           }}
         />
