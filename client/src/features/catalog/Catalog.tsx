@@ -27,26 +27,18 @@ export default function Catalog(){
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // useEffect(()=>{
-  //   agent.Store.list()
-  //   .then((products)=>setProducts(products.content))
-  //   .catch(error=>console.log(error))
-  //   .finally(()=>setLoading(false));
-  // }, []);
+  // Initial load - fetch brands and types
   useEffect(()=>{
     Promise.all([
-      agent.Store.list(currentPage, pageSize),
       agent.Store.brands(),
       agent.Store.types()
-    ]).then(([productsRes, brandsResp, typesResp])=>{
-      setProducts(productsRes.content);
-      setTotaItems(productsRes.totalElements);
+    ]).then(([brandsResp, typesResp])=>{
       setBrands(brandsResp);
       setTypes(typesResp);
     })
-    .catch((error)=>console.error(error))
-    .finally(()=>setLoading(false));
-  }, [currentPage, pageSize]);
+    .catch((error)=>console.error(error));
+  }, []);
+
   const loadProducts = (selectedSort: string, searchKeyword: string = '') =>{
     setLoading(true);
     let page = currentPage -1;
@@ -84,15 +76,38 @@ export default function Catalog(){
         .finally(()=> setLoading(false));
     }
   }
-  //Trigger loadProducts wheneever selectedBrandId or selectedTypeId changes
+
+  // Load products whenever page, sort, brand, or type changes
   useEffect(()=>{
-    loadProducts(selectedSort);
-  }, [selectedBrandId, selectedTypeId]);
+    setLoading(true);
+    let page = currentPage -1;
+    let size = pageSize;
+    let brandId = selectedBrandId !==0 ? selectedBrandId : undefined;
+    let typeId = selectedTypeId !==0 ? selectedTypeId : undefined;
+    const sort = "name";
+    const order = selectedSort === "desc" ? "desc" : "asc"; 
+    //construct the url
+    let url = `${agent.Store.apiUrl}?sort=${sort}&order=${order}`;
+    if(brandId !== undefined || typeId !== undefined){
+      url+='&';
+      if(brandId!== undefined) url += `brandId=${brandId}&`;
+      if(typeId!== undefined) url += `typeId=${typeId}&`;
+      //Remove trailing &
+      url = url.replace(/&$/, "");
+    }
+    //Make the API request with the url
+    agent.Store.list(page, size, undefined, undefined, url)
+      .then((productsRes)=>{
+        setProducts(productsRes.content);
+        setTotaItems(productsRes.totalElements);
+      })
+      .catch((error)=>console.error(error))
+      .finally(()=> setLoading(false));
+  }, [currentPage, selectedBrandId, selectedTypeId, selectedSort, pageSize]);
   
   const handleSortChange = (event: React.ChangeEvent<HTMLInputElement>) =>{
     const selectedSort = event.target.value;
-    setSelectedSort(selectedSort); 
-    loadProducts(selectedSort);
+    setSelectedSort(selectedSort);
   };
 
   const handleBrandChange = (event: React.ChangeEvent<HTMLInputElement>) =>{
@@ -100,8 +115,7 @@ export default function Catalog(){
     const brand = brands.find((b)=>b.name === selectedBrand);
     setSelectedBrand(selectedBrand)
     if(brand){
-      setSelectedBrandId(brand.id); 
-      loadProducts(selectedSort);
+      setSelectedBrandId(brand.id);
     }    
   };
 
@@ -110,8 +124,7 @@ export default function Catalog(){
     const type = types.find((t)=>t.name === selectedType);
     setSelectedType(selectedType)
     if(type){
-      setSelectedTypeId(type.id); 
-      loadProducts(selectedSort);
+      setSelectedTypeId(type.id);
     }    
   };
   const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) =>{
