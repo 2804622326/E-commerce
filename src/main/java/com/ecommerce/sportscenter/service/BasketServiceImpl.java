@@ -56,10 +56,17 @@ public class BasketServiceImpl implements BasketService{
 
     @Override
     public BasketResponse createBasket(Basket basket) {
-        log.info("Creating Basket with ID: {}", basket.getId());
-        // Check if basket already exists
+        log.info("Creating or updating Basket with ID: {}", basket.getId());
+        // Check if basket already exists - if so, update it instead of throwing exception
         if (basket.getId() != null && basketRepository.existsById(basket.getId())) {
-            throw new BasketAlreadyExistsException("Basket with ID " + basket.getId() + " already exists");
+            log.info("Basket with ID {} already exists, updating it", basket.getId());
+            // Update existing basket
+            Basket existingBasket = basketRepository.findById(basket.getId())
+                    .orElseThrow(() -> new BasketNotFoundException("Basket with ID " + basket.getId() + " not found"));
+            existingBasket.setItems(basket.getItems());
+            Basket updatedBasket = basketRepository.save(existingBasket);
+            log.info("Basket updated with Id: {}", updatedBasket.getId());
+            return convertToBasketResponse(updatedBasket);
         }
         Basket savedBasket = basketRepository.save(basket);
         log.info("Basket created with Id: {}", savedBasket.getId());
