@@ -113,8 +113,9 @@ const Basket = {
         try{
           await basketService.deleteBasket(basketId);
         } catch(error){
-          console.log("Failed to delete the Basket");
-          throw error;
+          // basketService.deleteBasket already handles 404 gracefully
+          // Only log here, don't re-throw to prevent uncaught promise errors
+          console.log("Basket deletion handled by basketService");
         }
       }
 }

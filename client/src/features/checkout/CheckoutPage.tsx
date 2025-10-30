@@ -88,12 +88,28 @@ import { ValidationRules } from "./validationRules";
               // Order created successfully
               setOrderNumber(orderId); 
               setActiveStep(activeStep + 1); // Move to the next step           
-              //now clear the basket from api 
-              agent.Basket.deleteBasket(basket.id);
-              dispatch(setBasket(null));
-              //and also clear the basket from local storage
+              
+              // Clear the basket from local storage and Redux state
               localStorage.removeItem('basket_id');
-              localStorage.removeItem('basket');                 
+              localStorage.removeItem('basket');
+              dispatch(setBasket(null));
+              
+              // Try to delete the basket from API
+              // Note: This might fail with 404 if the basket was already deleted by the backend
+              // after order creation, which is acceptable
+              if (basket.id) {
+                try {
+                  await agent.Basket.deleteBasket(basket.id);
+                  console.log("Basket deleted from server successfully");
+                } catch (deleteError: any) {
+                  // Silently handle deletion errors - basket might already be deleted
+                  if (deleteError?.response?.status === 404) {
+                    console.log("Basket already removed from server");
+                  } else {
+                    console.log("Note: Could not delete basket from server, but order was created successfully");
+                  }
+                }
+              }                 
             } catch (error) {
               // Handle API call errors
               console.error("Error submitting the order:", error);

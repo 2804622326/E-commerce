@@ -99,8 +99,16 @@ class BasketService {
     async deleteBasket(basketId: string):Promise<void>{
         try{
             await axios.delete(`${this.apiUrl}/${basketId}`);
-        }catch(error){
-            throw new Error("Failed to delete the basket.")
+            console.log("Basket deleted successfully");
+        }catch(error: any){
+            // If basket doesn't exist (404), that's fine - it's already deleted
+            if (error?.response?.status === 404) {
+                console.log("Basket not found on server (already deleted)");
+                return; // Don't throw error for 404
+            }
+            // For other errors, still throw
+            console.error("Failed to delete basket:", error);
+            throw new Error("Failed to delete the basket.");
         }
     }
 
