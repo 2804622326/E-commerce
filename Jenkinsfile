@@ -4,8 +4,6 @@ pipeline {
     environment {
         APP_DIR = '/home/ec2-user/ecommerce/E-commerce'
         DOCKER_COMPOSE_FILE = 'docker/docker-compose.yml'
-        MAVEN_HOME = '/opt/maven'
-        PATH = "${MAVEN_HOME}/bin:/usr/local/bin:${env.PATH}"
     }
     
     stages {
@@ -23,6 +21,7 @@ pipeline {
                 echo 'Building Spring Boot backend...'
                 sh '''
                     chmod +x ./mvnw
+                    # Use Maven wrapper - no external Maven needed
                     ./mvnw clean package -DskipTests
                 '''
             }
@@ -102,13 +101,11 @@ pipeline {
                     # Load environment variables
                     export $(cat ${APP_DIR}/.env | xargs)
                     
-                    # Build Docker images
+                    # Build Docker images - Maven and npm are in Dockerfile
                     docker-compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
                 '''
             }
-        }
-        
-        stage('Deploy') {
+        }        stage('Deploy') {
             steps {
                 echo 'Stopping old containers and starting new ones...'
                 sh '''
