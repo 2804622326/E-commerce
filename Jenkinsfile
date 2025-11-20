@@ -74,7 +74,6 @@ pipeline {
                 }
             }
         }
-        }
         
         stage('Test Frontend') {
             steps {
@@ -106,7 +105,9 @@ pipeline {
                     docker-compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
                 '''
             }
-        }        stage('Deploy') {
+        }
+        
+        stage('Deploy') {
             steps {
                 echo 'Stopping old containers and starting new ones...'
                 sh '''
