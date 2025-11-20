@@ -74,6 +74,7 @@ pipeline {
                 }
             }
         }
+        }
         
         stage('Test Frontend') {
             steps {
