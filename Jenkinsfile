@@ -1,14 +1,11 @@
 pipeline {
     agent any
     
-    tools {
-        maven 'Maven-3.9.0'
-        nodejs 'NodeJS-18.17.0'
-    }
-    
     environment {
         APP_DIR = '/home/ec2-user/ecommerce/E-commerce'
         DOCKER_COMPOSE_FILE = 'docker/docker-compose.yml'
+        MAVEN_HOME = '/opt/maven'
+        PATH = "${MAVEN_HOME}/bin:/usr/local/bin:${env.PATH}"
     }
     
     stages {
@@ -39,6 +36,26 @@ pipeline {
             }
         }
         
+        stage('Test Backend') {
+            steps {
+                echo 'Running backend unit tests...'
+                sh '''
+                    ./mvnw test
+                '''
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+                success {
+                    echo 'Backend tests passed'
+                }
+                failure {
+                    echo 'Backend tests failed'
+                }
+            }
+        }
+        
         stage('Build Frontend') {
             steps {
                 echo 'Building React frontend...'
@@ -55,6 +72,25 @@ pipeline {
                 }
                 failure {
                     echo 'Frontend build failed'
+                }
+            }
+        }
+        
+        stage('Test Frontend') {
+            steps {
+                echo 'Running frontend unit tests...'
+                dir('client') {
+                    sh '''
+                        npm run test -- --run
+                    '''
+                }
+            }
+            post {
+                success {
+                    echo 'Frontend tests passed'
+                }
+                failure {
+                    echo 'Frontend tests failed'
                 }
             }
         }
