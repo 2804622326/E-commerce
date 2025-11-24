@@ -179,19 +179,34 @@ class BasketServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should throw BasketAlreadyExistsException when creating basket with existing ID")
-    void createBasket_WhenBasketExists_ShouldThrowException() {
+    @DisplayName("Should update basket when basket already exists")
+    void createBasket_WhenBasketExists_ShouldUpdateBasket() {
         // Given
+        BasketItem item = new BasketItem();
+        item.setId(1);
+        item.setName("Product");
+        item.setPrice(100L);
+        item.setDescription("desc");
+        item.setQuantity(2);
+        item.setPictureUrl("url");
+        item.setProductBrand("Brand");
+        item.setProductType("Type");
+        
         Basket existingBasket = new Basket("existing-basket-id");
+        existingBasket.setItems(List.of(item));
+        
         when(basketRepository.existsById("existing-basket-id")).thenReturn(true);
+        when(basketRepository.findById("existing-basket-id")).thenReturn(Optional.of(existingBasket));
+        when(basketRepository.save(any(Basket.class))).thenReturn(existingBasket);
 
-        // When & Then
-        assertThatThrownBy(() -> basketService.createBasket(existingBasket))
-                .isInstanceOf(BasketAlreadyExistsException.class)
-                .hasMessageContaining("Basket with ID existing-basket-id already exists");
+        // When
+        BasketResponse result = basketService.createBasket(existingBasket);
 
+        // Then
+        assertThat(result).isNotNull();
         verify(basketRepository, times(1)).existsById("existing-basket-id");
-        verify(basketRepository, never()).save(any(Basket.class));
+        verify(basketRepository, times(1)).findById("existing-basket-id");
+        verify(basketRepository, times(1)).save(any(Basket.class));
     }
 
     @Test

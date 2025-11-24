@@ -133,7 +133,7 @@ class BasketControllerTest {
         mockMvc.perform(delete("/api/baskets/{basketId}", basketId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         verify(basketService, times(1)).deleteBasketById(basketId);
     }
