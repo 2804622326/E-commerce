@@ -10,7 +10,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Pulling latest code from repository...'
-                git branch: 'main', 
+                git branch: 'feature/sort-optimization', 
                     credentialsId: 'github-credentials',
                     url: 'https://github.com/2804622326/E-commerce.git'
             }
