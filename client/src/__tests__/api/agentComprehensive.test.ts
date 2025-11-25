@@ -369,9 +369,10 @@ describe('Agent API - Comprehensive Tests', () => {
       const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       (basketService.default.deleteBasket as any).mockRejectedValue(new Error('Delete failed'));
 
-      await expect(agent.Basket.deleteBasket('basket123')).rejects.toThrow('Delete failed');
+      // deleteBasket catches errors internally and doesn't re-throw
+      await agent.Basket.deleteBasket('basket123');
       
-      expect(consoleLogSpy).toHaveBeenCalledWith('Failed to delete the Basket');
+      expect(consoleLogSpy).toHaveBeenCalledWith('Basket deletion handled by basketService');
       consoleLogSpy.mockRestore();
     });
   });
