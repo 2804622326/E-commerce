@@ -98,8 +98,12 @@ pipeline {
             steps {
                 echo 'Building Docker images...'
                 sh '''
-                    # Load environment variables
-                    export $(cat ${APP_DIR}/.env | xargs)
+                    # Check if .env exists, if not skip loading
+                    if [ -f "${APP_DIR}/.env" ]; then
+                        export $(cat ${APP_DIR}/.env | xargs)
+                    else
+                        echo "Warning: .env file not found, using default values"
+                    fi
                     
                     # Build Docker images - Maven and npm are in Dockerfile
                     docker-compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
@@ -113,8 +117,12 @@ pipeline {
                 sh '''
                     cd ${APP_DIR}
                     
-                    # Load environment variables
-                    export $(cat .env | xargs)
+                    # Load environment variables if .env exists
+                    if [ -f ".env" ]; then
+                        export $(cat .env | xargs)
+                    else
+                        echo "Warning: .env file not found, using default values"
+                    fi
                     
                     # Stop and remove old containers
                     docker-compose -f ${DOCKER_COMPOSE_FILE} down || true
