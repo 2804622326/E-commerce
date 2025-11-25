@@ -2,7 +2,6 @@ pipeline {
     agent any
     
     environment {
-        APP_DIR = '/home/ec2-user/ecommerce/E-commerce'
         DOCKER_COMPOSE_FILE = 'docker/docker-compose.yml'
     }
     
@@ -99,9 +98,9 @@ pipeline {
                 echo 'Building Docker images...'
                 sh '''
                     # Create .env if it doesn't exist
-                    if [ ! -f "${APP_DIR}/.env" ]; then
+                    if [ ! -f ".env" ]; then
                         echo "Creating default .env file..."
-                        cat > ${APP_DIR}/.env << 'EOF'
+                        cat > .env << 'EOF'
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_DATABASE=sportscenter
@@ -113,7 +112,7 @@ EOF
                     fi
                     
                     # Load environment variables
-                    export $(cat ${APP_DIR}/.env | xargs)
+                    export $(cat .env | xargs)
                     
                     # Build Docker images - Maven and npm are in Dockerfile
                     docker-compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
@@ -125,8 +124,6 @@ EOF
             steps {
                 echo 'Stopping old containers and starting new ones...'
                 sh '''
-                    cd ${APP_DIR}
-                    
                     # Create .env if it doesn't exist
                     if [ ! -f ".env" ]; then
                         echo "Creating default .env file..."
