@@ -98,12 +98,22 @@ pipeline {
             steps {
                 echo 'Building Docker images...'
                 sh '''
-                    # Check if .env exists, if not skip loading
-                    if [ -f "${APP_DIR}/.env" ]; then
-                        export $(cat ${APP_DIR}/.env | xargs)
-                    else
-                        echo "Warning: .env file not found, using default values"
+                    # Create .env if it doesn't exist
+                    if [ ! -f "${APP_DIR}/.env" ]; then
+                        echo "Creating default .env file..."
+                        cat > ${APP_DIR}/.env << 'EOF'
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=sportscenter
+MYSQL_USER=root
+MYSQL_PASSWORD=password
+REDIS_HOST=localhost
+REDIS_PORT=6379
+EOF
                     fi
+                    
+                    # Load environment variables
+                    export $(cat ${APP_DIR}/.env | xargs)
                     
                     # Build Docker images - Maven and npm are in Dockerfile
                     docker-compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
@@ -117,12 +127,22 @@ pipeline {
                 sh '''
                     cd ${APP_DIR}
                     
-                    # Load environment variables if .env exists
-                    if [ -f ".env" ]; then
-                        export $(cat .env | xargs)
-                    else
-                        echo "Warning: .env file not found, using default values"
+                    # Create .env if it doesn't exist
+                    if [ ! -f ".env" ]; then
+                        echo "Creating default .env file..."
+                        cat > .env << 'EOF'
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=sportscenter
+MYSQL_USER=root
+MYSQL_PASSWORD=password
+REDIS_HOST=localhost
+REDIS_PORT=6379
+EOF
                     fi
+                    
+                    # Load environment variables
+                    export $(cat .env | xargs)
                     
                     # Stop and remove old containers
                     docker-compose -f ${DOCKER_COMPOSE_FILE} down || true
