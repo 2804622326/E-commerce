@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   sportscenter-redis:
     image: "redis:latest"
@@ -31,6 +29,8 @@ services:
       SPRING_REDIS_PORT: 6379
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE: UTC
+      SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT: -1
     ports:
       - "8081:8081"
     depends_on:
@@ -41,9 +41,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8081/api/products?PageSize=1 || exit 1"]
       interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      timeout: 15s
+      retries: 10
+      start_period: 120s
 
   sportscenter-frontend:
     build:

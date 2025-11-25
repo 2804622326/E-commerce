@@ -142,7 +142,7 @@ EOF
                     export $(cat .env | xargs)
                     
                     # Stop and remove old containers
-                    docker-compose -f ${DOCKER_COMPOSE_FILE} down || true
+                    docker-compose -f ${DOCKER_COMPOSE_FILE} down --remove-orphans || true
                     
                     # Start new containers
                     docker-compose -f ${DOCKER_COMPOSE_FILE} up -d
