@@ -227,12 +227,18 @@ EOF
         }
         failure {
             echo 'CI/CD pipeline execution failed!'
-            sh '''
-                echo "=========================================="
-                echo "Deployment failed, checking container logs:"
-                echo "=========================================="
-                docker-compose -f ${DOCKER_COMPOSE_FILE} logs --tail=50
-            '''
+            script {
+                try {
+                    sh '''
+                        echo "=========================================="
+                        echo "Deployment failed, checking container logs:"
+                        echo "=========================================="
+                        docker-compose -f ${DOCKER_COMPOSE_FILE} logs --tail=50 || echo "Failed to get container logs"
+                    '''
+                } catch (Exception e) {
+                    echo "Could not retrieve container logs: ${e.message}"
+                }
+            }
         }
         always {
             echo 'Cleaning up workspace...'
