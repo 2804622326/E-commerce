@@ -8,8 +8,6 @@ services:
       MYSQL_DATABASE: sports-center
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    ports:
-      - "3306:3306"
     volumes:
       - ./data.sql:/docker-entrypoint-initdb.d/data.sql
       - sports-center-mysql-data:/var/lib/mysql
