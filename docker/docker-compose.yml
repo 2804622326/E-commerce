@@ -1,4 +1,27 @@
 services:
+  sportscenter-mysql:
+    image: "mysql:8.0"
+    restart: always
+    container_name: "sports-center-mysql"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: sports-center
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data.sql:/docker-entrypoint-initdb.d/data.sql
+      - sports-center-mysql-data:/var/lib/mysql
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   sportscenter-redis:
     image: "redis:latest"
     restart: always
@@ -34,6 +57,8 @@ services:
     ports:
       - "8081:8081"
     depends_on:
+      sportscenter-mysql:
+        condition: service_healthy
       sportscenter-redis:
         condition: service_healthy
     networks:
@@ -70,4 +95,5 @@ networks:
     driver: bridge
 
 volumes:
+  sports-center-mysql-data:
   sports-center-redis-data:

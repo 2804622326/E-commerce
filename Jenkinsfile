@@ -101,9 +101,9 @@ pipeline {
                     if [ ! -f ".env" ]; then
                         echo "Creating default .env file..."
                         cat > .env << 'EOF'
-MYSQL_HOST=database-sports.cr0csa28a9bg.eu-west-1.rds.amazonaws.com
+MYSQL_HOST=sportscenter-mysql
 MYSQL_PORT=3306
-MYSQL_DATABASE=sportscenter
+MYSQL_DATABASE=sports-center
 MYSQL_USER=admin
 MYSQL_PASSWORD=Liminghao2001
 REDIS_HOST=localhost
@@ -128,9 +128,9 @@ EOF
                     if [ ! -f ".env" ]; then
                         echo "Creating default .env file..."
                         cat > .env << 'EOF'
-MYSQL_HOST=database-sports.cr0csa28a9bg.eu-west-1.rds.amazonaws.com
+MYSQL_HOST=sportscenter-mysql
 MYSQL_PORT=3306
-MYSQL_DATABASE=sportscenter
+MYSQL_DATABASE=sports-center
 MYSQL_USER=admin
 MYSQL_PASSWORD=Liminghao2001
 REDIS_HOST=localhost
