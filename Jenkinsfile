@@ -203,12 +203,13 @@ ENDSSH
             steps {
                 echo 'Checking EC2 service health status...'
                 script {
-                    def maxRetries = 15
+                    def maxRetries = 25
                     def retryCount = 0
                     def backendHealthy = false
                     def frontendHealthy = false
                     
-                    // Check backend on EC2
+                    // Check backend on EC2 (需要等待容器启动,约45秒)
+                    echo 'Waiting for backend to be ready...'
                     while (retryCount < maxRetries && !backendHealthy) {
                         try {
                             sh "curl -f http://${EC2_HOST}:8081/api/products?PageSize=1"
@@ -217,15 +218,16 @@ ENDSSH
                         } catch (Exception e) {
                             retryCount++
                             echo "Backend health check failed, retrying ${retryCount}/${maxRetries}..."
-                            sleep(15)
+                            sleep(20)
                         }
                     }
                     
                     if (!backendHealthy) {
-                        error("Backend health check failed on EC2")
+                        error("Backend health check failed on EC2 after ${maxRetries} attempts")
                     }
                     
-                    // Check frontend on EC2
+                    // Check frontend on EC2 (需要等待 backend 健康,约50秒)
+                    echo 'Waiting for frontend to be ready...'
                     retryCount = 0
                     while (retryCount < maxRetries && !frontendHealthy) {
                         try {
@@ -235,12 +237,12 @@ ENDSSH
                         } catch (Exception e) {
                             retryCount++
                             echo "Frontend health check failed, retrying ${retryCount}/${maxRetries}..."
-                            sleep(10)
+                            sleep(15)
                         }
                     }
                     
                     if (!frontendHealthy) {
-                        error("Frontend health check failed on EC2")
+                        error("Frontend health check failed on EC2 after ${maxRetries} attempts")
                     }
                 }
             }
