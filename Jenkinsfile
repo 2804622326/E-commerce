@@ -172,42 +172,28 @@ pipeline {
                             docker/data.sql \
                             ${EC2_USER}@${EC2_HOST}:~/data.sql
                         
-                        # Create deployment script
-                        cat > /tmp/deploy.sh << 'EOF'
-#!/bin/bash
-set -e
-
-echo "=== Starting deployment ==="
-
-# Login to ECR
-echo "Logging in to ECR..."
-aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin 614441038924.dkr.ecr.eu-west-1.amazonaws.com
-
-# Pull latest images
-echo "Pulling images..."
-docker pull 614441038924.dkr.ecr.eu-west-1.amazonaws.com/sportscenter-backend:latest
-docker pull 614441038924.dkr.ecr.eu-west-1.amazonaws.com/sportscenter-frontend:latest
-
-# Stop old containers
-echo "Stopping old containers..."
-docker-compose down || true
-
-# Clean up old images
-echo "Cleaning up..."
-docker image prune -f
-
-# Start new containers
-echo "Starting new containers..."
-docker-compose up -d
-
-# Show running containers
-echo "=== Deployment complete ==="
-docker-compose ps
-EOF
-
-                        # Upload and execute script
-                        scp -o StrictHostKeyChecking=no /tmp/deploy.sh ${EC2_USER}@${EC2_HOST}:~/deploy.sh
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "chmod +x ~/deploy.sh && ~/deploy.sh"
+                        # Deploy on EC2
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'ENDSSH'
+                            # Login to ECR
+                            aws ecr get-login-password --region eu-west-1 | \
+                                docker login --username AWS --password-stdin 614441038924.dkr.ecr.eu-west-1.amazonaws.com
+                            
+                            # Pull latest images
+                            docker pull 614441038924.dkr.ecr.eu-west-1.amazonaws.com/sportscenter-backend:latest
+                            docker pull 614441038924.dkr.ecr.eu-west-1.amazonaws.com/sportscenter-frontend:latest
+                            
+                            # Stop old containers
+                            docker-compose down || true
+                            
+                            # Clean up old images
+                            docker image prune -f
+                            
+                            # Start new containers
+                            docker-compose up -d
+                            
+                            # Show running containers
+                            docker-compose ps
+ENDSSH
                     '''
                 }
             }
