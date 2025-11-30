@@ -3,6 +3,12 @@ pipeline {
     
     environment {
         DOCKER_COMPOSE_FILE = 'docker/docker-compose.yml'
+        AWS_REGION = 'eu-west-1'
+        ECR_REGISTRY = '614441038924.dkr.ecr.eu-west-1.amazonaws.com'
+        ECR_REPO_BACKEND = 'sportscenter-backend'
+        ECR_REPO_FRONTEND = 'sportscenter-frontend'
+        EC2_HOST = '34.240.77.92'
+        EC2_USER = 'ec2-user'
     }
     
     stages {
@@ -95,106 +101,146 @@ pipeline {
         
         stage('Build Docker Images') {
             steps {
-                echo 'Building Docker images...'
+                echo 'Building Docker images for AMD64 architecture...'
                 sh '''
-                    # Create .env if it doesn't exist
-                    if [ ! -f ".env" ]; then
-                        echo "Creating default .env file..."
-                        cat > .env << 'EOF'
-MYSQL_HOST=sportscenter-mysql
-MYSQL_PORT=3306
-MYSQL_DATABASE=sports-center
-MYSQL_USER=admin
-MYSQL_PASSWORD=Liminghao2001
-REDIS_HOST=localhost
-REDIS_PORT=6379
-EOF
-                    fi
+                    # Create and use buildx builder for multi-platform builds
+                    docker buildx create --name multiplatform --use || docker buildx use multiplatform
+                    docker buildx inspect --bootstrap
                     
-                    # Load environment variables
-                    export $(cat .env | xargs)
+                    # Build backend image for AMD64
+                    docker buildx build \
+                        --platform linux/amd64 \
+                        --file docker/Dockerfile.backend \
+                        --tag sportscenter-backend:latest \
+                        --tag ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:latest \
+                        --tag ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:${BUILD_NUMBER} \
+                        --load \
+                        .
                     
-                    # Build Docker images - Maven and npm are in Dockerfile
-                    docker-compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
+                    # Build frontend image for AMD64
+                    docker buildx build \
+                        --platform linux/amd64 \
+                        --file docker/Dockerfile.frontend \
+                        --tag sportscenter-frontend:latest \
+                        --tag ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:latest \
+                        --tag ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:${BUILD_NUMBER} \
+                        --load \
+                        .
                 '''
             }
         }
         
-        stage('Deploy') {
+        stage('Push to ECR') {
             steps {
-                echo 'Stopping old containers and starting new ones...'
-                sh '''
-                    # Create .env if it doesn't exist
-                    if [ ! -f ".env" ]; then
-                        echo "Creating default .env file..."
-                        cat > .env << 'EOF'
-MYSQL_HOST=sportscenter-mysql
-MYSQL_PORT=3306
-MYSQL_DATABASE=sports-center
-MYSQL_USER=admin
-MYSQL_PASSWORD=Liminghao2001
-REDIS_HOST=localhost
-REDIS_PORT=6379
-EOF
-                    fi
-                    
-                    # Load environment variables
-                    export $(cat .env | xargs)
-                    
-                    # Stop and remove old containers
-                    docker-compose -f ${DOCKER_COMPOSE_FILE} down --remove-orphans || true
-                    
-                    # Start new containers
-                    docker-compose -f ${DOCKER_COMPOSE_FILE} up -d
-                    
-                    # Clean up unused images
-                    docker image prune -f
-                '''
+                echo 'Pushing Docker images to Amazon ECR...'
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-credentials'
+                ]]) {
+                    sh '''
+                        # Login to ECR
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                        
+                        # Push backend images
+                        docker push ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:latest
+                        docker push ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:${BUILD_NUMBER}
+                        
+                        # Push frontend images
+                        docker push ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:latest
+                        docker push ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:${BUILD_NUMBER}
+                        
+                        echo "Images pushed successfully!"
+                        echo "Backend: ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:${BUILD_NUMBER}"
+                        echo "Frontend: ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:${BUILD_NUMBER}"
+                    '''
+                }
+            }
+        }
+        
+        stage('Deploy to EC2') {
+            steps {
+                echo 'Deploying application to EC2 instance...'
+                sshagent(['ec2-ssh-key']) {
+                    sh '''
+                        # Upload docker-compose file and data
+                        scp -o StrictHostKeyChecking=no \
+                            docker/docker-compose.ec2.yml \
+                            ${EC2_USER}@${EC2_HOST}:~/docker-compose.yml
+                        
+                        scp -o StrictHostKeyChecking=no \
+                            docker/data.sql \
+                            ${EC2_USER}@${EC2_HOST}:~/data.sql
+                        
+                        # Deploy on EC2
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'ENDSSH'
+                            # Login to ECR
+                            aws ecr get-login-password --region eu-west-1 | \
+                                docker login --username AWS --password-stdin 614441038924.dkr.ecr.eu-west-1.amazonaws.com
+                            
+                            # Pull latest images
+                            docker pull 614441038924.dkr.ecr.eu-west-1.amazonaws.com/sportscenter-backend:latest
+                            docker pull 614441038924.dkr.ecr.eu-west-1.amazonaws.com/sportscenter-frontend:latest
+                            
+                            # Stop old containers
+                            docker-compose down || true
+                            
+                            # Clean up old images
+                            docker image prune -f
+                            
+                            # Start new containers
+                            docker-compose up -d
+                            
+                            # Show running containers
+                            docker-compose ps
+ENDSSH
+                    '''
+                }
             }
         }
         
         stage('Health Check') {
             steps {
-                echo 'Checking service health status...'
+                echo 'Checking EC2 service health status...'
                 script {
-                    def maxRetries = 10
+                    def maxRetries = 15
                     def retryCount = 0
                     def backendHealthy = false
                     def frontendHealthy = false
                     
-                    // Check backend
+                    // Check backend on EC2
                     while (retryCount < maxRetries && !backendHealthy) {
                         try {
-                            sh 'curl -f http://localhost:8081/api/products?PageSize=1'
+                            sh "curl -f http://${EC2_HOST}:8081/api/products?PageSize=1"
                             backendHealthy = true
-                            echo 'Backend health check passed'
+                            echo 'Backend health check passed on EC2'
                         } catch (Exception e) {
                             retryCount++
                             echo "Backend health check failed, retrying ${retryCount}/${maxRetries}..."
-                            sleep(10)
+                            sleep(15)
                         }
                     }
                     
                     if (!backendHealthy) {
-                        error("Backend health check failed")
+                        error("Backend health check failed on EC2")
                     }
                     
-                    // Check frontend
+                    // Check frontend on EC2
                     retryCount = 0
                     while (retryCount < maxRetries && !frontendHealthy) {
                         try {
-                            sh 'curl -f http://localhost:80/'
+                            sh "curl -f http://${EC2_HOST}/"
                             frontendHealthy = true
-                            echo 'Frontend health check passed'
+                            echo 'Frontend health check passed on EC2'
                         } catch (Exception e) {
                             retryCount++
                             echo "Frontend health check failed, retrying ${retryCount}/${maxRetries}..."
-                            sleep(5)
+                            sleep(10)
                         }
                     }
                     
                     if (!frontendHealthy) {
-                        error("Frontend health check failed")
+                        error("Frontend health check failed on EC2")
                     }
                 }
             }
@@ -202,21 +248,32 @@ EOF
         
         stage('Deployment Report') {
             steps {
-                sh '''
+                sh """
                     echo "=========================================="
-                    echo "Deployment Successful!"
+                    echo "Deployment to EC2 Successful!"
                     echo "=========================================="
-                    echo "Frontend URL: http://$(curl -s ifconfig.me)"
-                    echo "Backend API: http://$(curl -s ifconfig.me):8081/api"
-                    echo "Jenkins: http://$(curl -s ifconfig.me):8080"
+                    echo "Frontend URL: http://${EC2_HOST}"
+                    echo "Backend API:  http://${EC2_HOST}:8081/api"
                     echo "=========================================="
-                    echo ""
-                    echo "Running containers:"
-                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                    echo ""
-                    echo "Disk usage:"
-                    df -h / | tail -1
-                '''
+                    echo "Build Number: ${BUILD_NUMBER}"
+                    echo "ECR Images:"
+                    echo "  - ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:${BUILD_NUMBER}"
+                    echo "  - ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:${BUILD_NUMBER}"
+                    echo "=========================================="
+                """
+                
+                sshagent(['ec2-ssh-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'ENDSSH'
+                            echo ""
+                            echo "Running containers on EC2:"
+                            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+                            echo ""
+                            echo "Disk usage:"
+                            df -h / | tail -1
+ENDSSH
+                    '''
+                }
             }
         }
     }
@@ -224,25 +281,30 @@ EOF
     post {
         success {
             echo 'CI/CD pipeline executed successfully!'
+            echo "Application deployed to: http://${EC2_HOST}"
         }
         failure {
             echo 'CI/CD pipeline execution failed!'
             script {
                 try {
-                    sh '''
-                        echo "=========================================="
-                        echo "Deployment failed, checking container logs:"
-                        echo "=========================================="
-                        docker-compose -f ${DOCKER_COMPOSE_FILE} logs --tail=50 || echo "Failed to get container logs"
-                    '''
+                    echo "Checking EC2 container logs..."
+                    sshagent(['ec2-ssh-key']) {
+                        sh '''
+                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'ENDSSH'
+                                echo "=========================================="
+                                echo "Container logs from EC2:"
+                                echo "=========================================="
+                                docker-compose logs --tail=100 || echo "Failed to get container logs"
+ENDSSH
+                        '''
+                    }
                 } catch (Exception e) {
-                    echo "Could not retrieve container logs: ${e.message}"
+                    echo "Could not retrieve EC2 container logs: ${e.message}"
                 }
             }
         }
         always {
-            echo 'Cleaning up workspace...'
-            cleanWs()
+            echo 'Pipeline execution completed.'
         }
     }
 }

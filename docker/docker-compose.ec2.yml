@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  sportscenter-mysql:
+    image: mysql:8.0
+    container_name: sportscenter-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Liminghao2001
+      MYSQL_DATABASE: sports-center
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: Liminghao2001
+    volumes:
+      - ./data.sql:/docker-entrypoint-initdb.d/data.sql
+      - sports-center-mysql-data:/var/lib/mysql
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pLiminghao2001"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sportscenter-redis:
+    image: redis:7-alpine
+    container_name: sportscenter-redis
+    volumes:
+      - sports-center-redis-data:/data
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sportscenter-backend:
+    image: 614441038924.dkr.ecr.eu-west-1.amazonaws.com/sportscenter-backend:latest
+    container_name: sportscenter-backend
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://sportscenter-mysql:3306/sports-center?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: Liminghao2001
+      SPRING_REDIS_HOST: sportscenter-redis
+      SPRING_REDIS_PORT: 6379
+    depends_on:
+      sportscenter-mysql:
+        condition: service_healthy
+      sportscenter-redis:
+        condition: service_healthy
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/products?PageSize=1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  sportscenter-frontend:
+    image: 614441038924.dkr.ecr.eu-west-1.amazonaws.com/sportscenter-frontend:latest
+    container_name: sportscenter-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      sportscenter-backend:
+        condition: service_healthy
+    networks:
+      - sportscenter-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  sportscenter-network:
+    driver: bridge
+
+volumes:
+  sports-center-mysql-data:
+  sports-center-redis-data:
