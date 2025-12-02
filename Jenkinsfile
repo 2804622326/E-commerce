@@ -196,9 +196,45 @@ docker-compose down || true
 echo "Cleaning up..."
 docker image prune -f
 
-# Start new containers
+# Start new containers and WAIT for them to be healthy
 echo "Starting new containers..."
 docker-compose up -d
+
+# Wait for backend to be healthy (up to 3 minutes)
+echo "Waiting for backend to become healthy..."
+RETRIES=18
+for i in $(seq 1 $RETRIES); do
+    if docker inspect --format='{{.State.Health.Status}}' sportscenter-backend 2>/dev/null | grep -q "healthy"; then
+        echo "Backend is healthy!"
+        break
+    fi
+    if [ $i -eq $RETRIES ]; then
+        echo "ERROR: Backend failed to become healthy"
+        docker logs sportscenter-backend --tail=50
+        exit 1
+    fi
+    echo "Waiting for backend... attempt $i/$RETRIES"
+    sleep 10
+done
+
+# Wait for frontend to start (it depends on backend being healthy)
+echo "Waiting for frontend to start..."
+sleep 5
+RETRIES=12
+for i in $(seq 1 $RETRIES); do
+    STATUS=$(docker inspect --format='{{.State.Status}}' sportscenter-frontend 2>/dev/null || echo "not found")
+    if [ "$STATUS" = "running" ]; then
+        echo "Frontend is running!"
+        break
+    fi
+    if [ $i -eq $RETRIES ]; then
+        echo "ERROR: Frontend failed to start"
+        docker logs sportscenter-frontend --tail=50
+        exit 1
+    fi
+    echo "Waiting for frontend... attempt $i/$RETRIES (status: $STATUS)"
+    sleep 5
+done
 
 # Show running containers
 echo "=== Deployment complete ==="
