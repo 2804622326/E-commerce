@@ -7,7 +7,7 @@ pipeline {
         ECR_REGISTRY = '614441038924.dkr.ecr.eu-west-1.amazonaws.com'
         ECR_REPO_BACKEND = 'sportscenter-backend'
         ECR_REPO_FRONTEND = 'sportscenter-frontend'
-        EC2_HOST = '34.240.77.92'
+        EC2_HOST = '34.242.114.186'
         EC2_USER = 'ec2-user'
     }
     
