@@ -316,14 +316,7 @@ EOF
                 
                 sshagent(['ec2-ssh-key']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'ENDSSH'
-                            echo ""
-                            echo "Running containers on EC2:"
-                            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                            echo ""
-                            echo "Disk usage:"
-                            df -h / | tail -1
-ENDSSH
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "echo '' && echo 'Running containers on EC2:' && docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' && echo '' && echo 'Disk usage:' && df -h / | tail -1"
                     '''
                 }
             }
@@ -342,12 +335,7 @@ ENDSSH
                     echo "Checking EC2 container logs..."
                     sshagent(['ec2-ssh-key']) {
                         sh '''
-                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'ENDSSH'
-                                echo "=========================================="
-                                echo "Container logs from EC2:"
-                                echo "=========================================="
-                                docker-compose logs --tail=100 || echo "Failed to get container logs"
-ENDSSH
+                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "echo '==========================================' && echo 'Container logs from EC2:' && echo '==========================================' && docker-compose logs --tail=50 || echo 'Failed to get container logs'"
                         '''
                     }
                 } catch (Exception e) {
