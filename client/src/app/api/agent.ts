@@ -6,9 +6,9 @@ import { Dispatch } from "redux";
 import { Product } from "../models/product";
 import type { Basket } from "../models/basket";
 
-// Use relative path for Docker deployment with nginx proxy
-// For local development, use: 'http://localhost:8081/api/'
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || '/api/';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
+axios.defaults.baseURL = `${API_URL}/api/`;
+axios.defaults.withCredentials = true;
 
 const idle = () => new Promise(resolve => setTimeout(resolve, 100));
 const responseBody = (response: AxiosResponse) => response.data;

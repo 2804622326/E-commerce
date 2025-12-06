@@ -102,31 +102,36 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 echo 'Building Docker images for AMD64 architecture...'
-                sh '''
-                    # Create and use buildx builder for multi-platform builds
-                    docker buildx create --name multiplatform --use || docker buildx use multiplatform
-                    docker buildx inspect --bootstrap
+                script {
+                    def ec2Host = sh(
+                        script: "aws ec2 describe-instances --instance-ids ${EC2_INSTANCE_ID} --region ${AWS_REGION} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text",
+                        returnStdout: true
+                    ).trim()
                     
-                    # Build backend image for AMD64
-                    docker buildx build \
-                        --platform linux/amd64 \
-                        --file docker/Dockerfile.backend \
-                        --tag sportscenter-backend:latest \
-                        --tag ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:latest \
-                        --tag ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:${BUILD_NUMBER} \
-                        --load \
-                        .
-                    
-                    # Build frontend image for AMD64
-                    docker buildx build \
-                        --platform linux/amd64 \
-                        --file docker/Dockerfile.frontend \
-                        --tag sportscenter-frontend:latest \
-                        --tag ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:latest \
-                        --tag ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:${BUILD_NUMBER} \
-                        --load \
-                        .
-                '''
+                    sh """
+                        docker buildx create --name multiplatform --use || docker buildx use multiplatform
+                        docker buildx inspect --bootstrap
+                        
+                        docker buildx build \
+                            --platform linux/amd64 \
+                            --file docker/Dockerfile.backend \
+                            --tag sportscenter-backend:latest \
+                            --tag ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:latest \
+                            --tag ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:${BUILD_NUMBER} \
+                            --load \
+                            .
+                        
+                        docker buildx build \
+                            --platform linux/amd64 \
+                            --file docker/Dockerfile.frontend \
+                            --build-arg VITE_API_URL=http://${ec2Host}:8081 \
+                            --tag sportscenter-frontend:latest \
+                            --tag ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:latest \
+                            --tag ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:${BUILD_NUMBER} \
+                            --load \
+                            .
+                    """
+                }
             }
         }
         
