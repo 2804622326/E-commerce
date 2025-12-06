@@ -173,11 +173,11 @@ pipeline {
                         sh """
                             scp -o StrictHostKeyChecking=no \
                                 docker/docker-compose.ec2.yml \
-                                ${EC2_USER}@${ec2Host}:~/docker-compose.yml
+                                \${EC2_USER}@${ec2Host}:~/docker-compose.yml
                             
                             scp -o StrictHostKeyChecking=no \
                                 docker/data.sql \
-                                ${EC2_USER}@${ec2Host}:~/data.sql
+                                \${EC2_USER}@${ec2Host}:~/data.sql
                             
                             cat > /tmp/deploy.sh << 'EOF'
 #!/bin/bash
@@ -247,8 +247,8 @@ echo "=== Deployment complete ==="
 docker-compose ps
 EOF
 
-                            scp -o StrictHostKeyChecking=no /tmp/deploy.sh ${EC2_USER}@${ec2Host}:~/deploy.sh
-                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${ec2Host} "chmod +x ~/deploy.sh && ~/deploy.sh"
+                            scp -o StrictHostKeyChecking=no /tmp/deploy.sh \${EC2_USER}@${ec2Host}:~/deploy.sh
+                            ssh -o StrictHostKeyChecking=no \${EC2_USER}@${ec2Host} "chmod +x ~/deploy.sh && ~/deploy.sh"
                         """
                     }
                 }
@@ -331,7 +331,7 @@ EOF
                     
                     sshagent(['ec2-ssh-key']) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${ec2Host} "echo '' && echo 'Running containers on EC2:' && docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' && echo '' && echo 'Disk usage:' && df -h / | tail -1"
+                            ssh -o StrictHostKeyChecking=no \${EC2_USER}@${ec2Host} "echo '' && echo 'Running containers on EC2:' && docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}' && echo '' && echo 'Disk usage:' && df -h / | tail -1"
                         """
                     }
                 }
@@ -362,7 +362,7 @@ EOF
                     echo "Checking EC2 container logs..."
                     sshagent(['ec2-ssh-key']) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${ec2Host} "echo '==========================================' && echo 'Container logs from EC2:' && echo '==========================================' && docker-compose logs --tail=50 || echo 'Failed to get container logs'"
+                            ssh -o StrictHostKeyChecking=no \${EC2_USER}@${ec2Host} "echo '==========================================' && echo 'Container logs from EC2:' && echo '==========================================' && docker-compose logs --tail=50 || echo 'Failed to get container logs'"
                         """
                     }
                 } catch (Exception e) {
