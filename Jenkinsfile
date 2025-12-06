@@ -7,7 +7,7 @@ pipeline {
         ECR_REGISTRY = '614441038924.dkr.ecr.eu-west-1.amazonaws.com'
         ECR_REPO_BACKEND = 'sportscenter-backend'
         ECR_REPO_FRONTEND = 'sportscenter-frontend'
-        EC2_HOST = '34.242.114.186'
+        EC2_INSTANCE_ID = 'i-07871d98b4e6dec77'
         EC2_USER = 'ec2-user'
     }
     
@@ -161,19 +161,25 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo 'Deploying application to EC2 instance...'
-                sshagent(['ec2-ssh-key']) {
-                    sh '''
-                        # Upload docker-compose file and data
-                        scp -o StrictHostKeyChecking=no \
-                            docker/docker-compose.ec2.yml \
-                            ${EC2_USER}@${EC2_HOST}:~/docker-compose.yml
-                        
-                        scp -o StrictHostKeyChecking=no \
-                            docker/data.sql \
-                            ${EC2_USER}@${EC2_HOST}:~/data.sql
-                        
-                        # Create deployment script
-                        cat > /tmp/deploy.sh << 'EOF'
+                script {
+                    def ec2Host = sh(
+                        script: "aws ec2 describe-instances --instance-ids ${EC2_INSTANCE_ID} --region ${AWS_REGION} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text",
+                        returnStdout: true
+                    ).trim()
+                    
+                    echo "EC2 Public IP: ${ec2Host}"
+                    
+                    sshagent(['ec2-ssh-key']) {
+                        sh """
+                            scp -o StrictHostKeyChecking=no \
+                                docker/docker-compose.ec2.yml \
+                                ${EC2_USER}@${ec2Host}:~/docker-compose.yml
+                            
+                            scp -o StrictHostKeyChecking=no \
+                                docker/data.sql \
+                                ${EC2_USER}@${ec2Host}:~/data.sql
+                            
+                            cat > /tmp/deploy.sh << 'EOF'
 #!/bin/bash
 set -e
 
@@ -241,10 +247,10 @@ echo "=== Deployment complete ==="
 docker-compose ps
 EOF
 
-                        # Upload and execute script
-                        scp -o StrictHostKeyChecking=no /tmp/deploy.sh ${EC2_USER}@${EC2_HOST}:~/deploy.sh
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "chmod +x ~/deploy.sh && ~/deploy.sh"
-                    '''
+                            scp -o StrictHostKeyChecking=no /tmp/deploy.sh ${EC2_USER}@${ec2Host}:~/deploy.sh
+                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${ec2Host} "chmod +x ~/deploy.sh && ~/deploy.sh"
+                        """
+                    }
                 }
             }
         }
@@ -253,16 +259,20 @@ EOF
             steps {
                 echo 'Checking EC2 service health status...'
                 script {
+                    def ec2Host = sh(
+                        script: "aws ec2 describe-instances --instance-ids ${EC2_INSTANCE_ID} --region ${AWS_REGION} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text",
+                        returnStdout: true
+                    ).trim()
+                    
                     def maxRetries = 25
                     def retryCount = 0
                     def backendHealthy = false
                     def frontendHealthy = false
                     
-                    // Check backend on EC2 (需要等待容器启动,约45秒)
                     echo 'Waiting for backend to be ready...'
                     while (retryCount < maxRetries && !backendHealthy) {
                         try {
-                            sh "curl -f http://${EC2_HOST}:8081/api/products?PageSize=1"
+                            sh "curl -f http://${ec2Host}:8081/api/products?PageSize=1"
                             backendHealthy = true
                             echo 'Backend health check passed on EC2'
                         } catch (Exception e) {
@@ -276,12 +286,11 @@ EOF
                         error("Backend health check failed on EC2 after ${maxRetries} attempts")
                     }
                     
-                    // Check frontend on EC2 (需要等待 backend 健康,约50秒)
                     echo 'Waiting for frontend to be ready...'
                     retryCount = 0
                     while (retryCount < maxRetries && !frontendHealthy) {
                         try {
-                            sh "curl -f http://${EC2_HOST}/"
+                            sh "curl -f http://${ec2Host}/"
                             frontendHealthy = true
                             echo 'Frontend health check passed on EC2'
                         } catch (Exception e) {
@@ -300,24 +309,31 @@ EOF
         
         stage('Deployment Report') {
             steps {
-                sh """
-                    echo "=========================================="
-                    echo "Deployment to EC2 Successful!"
-                    echo "=========================================="
-                    echo "Frontend URL: http://${EC2_HOST}"
-                    echo "Backend API:  http://${EC2_HOST}:8081/api"
-                    echo "=========================================="
-                    echo "Build Number: ${BUILD_NUMBER}"
-                    echo "ECR Images:"
-                    echo "  - ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:${BUILD_NUMBER}"
-                    echo "  - ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:${BUILD_NUMBER}"
-                    echo "=========================================="
-                """
-                
-                sshagent(['ec2-ssh-key']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "echo '' && echo 'Running containers on EC2:' && docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' && echo '' && echo 'Disk usage:' && df -h / | tail -1"
-                    '''
+                script {
+                    def ec2Host = sh(
+                        script: "aws ec2 describe-instances --instance-ids ${EC2_INSTANCE_ID} --region ${AWS_REGION} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text",
+                        returnStdout: true
+                    ).trim()
+                    
+                    sh """
+                        echo "=========================================="
+                        echo "Deployment to EC2 Successful!"
+                        echo "=========================================="
+                        echo "Frontend URL: http://${ec2Host}"
+                        echo "Backend API:  http://${ec2Host}:8081/api"
+                        echo "=========================================="
+                        echo "Build Number: ${BUILD_NUMBER}"
+                        echo "ECR Images:"
+                        echo "  - ${ECR_REGISTRY}/${ECR_REPO_BACKEND}:${BUILD_NUMBER}"
+                        echo "  - ${ECR_REGISTRY}/${ECR_REPO_FRONTEND}:${BUILD_NUMBER}"
+                        echo "=========================================="
+                    """
+                    
+                    sshagent(['ec2-ssh-key']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${ec2Host} "echo '' && echo 'Running containers on EC2:' && docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' && echo '' && echo 'Disk usage:' && df -h / | tail -1"
+                        """
+                    }
                 }
             }
         }
@@ -326,17 +342,28 @@ EOF
     post {
         success {
             echo 'CI/CD pipeline executed successfully!'
-            echo "Application deployed to: http://${EC2_HOST}"
+            script {
+                def ec2Host = sh(
+                    script: "aws ec2 describe-instances --instance-ids ${EC2_INSTANCE_ID} --region ${AWS_REGION} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text",
+                    returnStdout: true
+                ).trim()
+                echo "Application deployed to: http://${ec2Host}"
+            }
         }
         failure {
             echo 'CI/CD pipeline execution failed!'
             script {
                 try {
+                    def ec2Host = sh(
+                        script: "aws ec2 describe-instances --instance-ids ${EC2_INSTANCE_ID} --region ${AWS_REGION} --query 'Reservations[0].Instances[0].PublicIpAddress' --output text",
+                        returnStdout: true
+                    ).trim()
+                    
                     echo "Checking EC2 container logs..."
                     sshagent(['ec2-ssh-key']) {
-                        sh '''
-                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "echo '==========================================' && echo 'Container logs from EC2:' && echo '==========================================' && docker-compose logs --tail=50 || echo 'Failed to get container logs'"
-                        '''
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${ec2Host} "echo '==========================================' && echo 'Container logs from EC2:' && echo '==========================================' && docker-compose logs --tail=50 || echo 'Failed to get container logs'"
+                        """
                     }
                 } catch (Exception e) {
                     echo "Could not retrieve EC2 container logs: ${e.message}"
