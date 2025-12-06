@@ -41,7 +41,7 @@ const requests = {
 }
 
 const Store = {
-    apiUrl: 'http://localhost:8081/api/products',
+    apiUrl: `${API_URL}/api/products`,
     list:(page: number, size: number, brandId?: number, typeId?: number, url?: string)=> {
       let requestUrl = url || `products?page=${page-1}&size=${size}`;
       if(brandId!==undefined){
