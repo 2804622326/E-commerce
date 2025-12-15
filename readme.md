@@ -1,92 +1,164 @@
-# Building FullStack E-Commerce App using SpringBoot & React
+# SportsCenter E-commerce
 
-## Introduction:
+A full-stack e-commerce application built with Spring Boot and React, featuring complete CI/CD pipeline (Jenkins + Docker + AWS ECR/EC2), comprehensive unit/integration testing, and code coverage reporting.
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/3e5873dd-42f8-4576-8961-b95784b91b4f)
+## Features
+- Product browsing with filtering (brands/types) and pagination
+- Shopping basket and order management
+- JWT-based authentication and authorization
+- Swagger/OpenAPI documentation
 
-GitHub:- https://github.com/rahulsahay19/Java-React-FullStack
+## Tech Stack
+- **Backend**: Spring Boot 3 (Java 17), Spring Security (JWT), Spring Data JPA, Redis
+- **Frontend**: React + Vite + TypeScript, Vitest + Testing Library
+- **Build & Quality**: Maven, Jacoco code coverage
+- **DevOps**: Docker (buildx multi-platform), Jenkins Pipeline, AWS ECR/EC2, Nginx
 
-Enroll here:- https://www.udemy.com/course/building-fullstack-e-commerce-app-using-springboot-react/?couponCode=OFFER-PRICE
+## Project Structure
+- Backend: `src/main/java/com/ecommerce/sportscenter` (controller, service, repository, entity, security, config)
+- Frontend: `client/src` (features, app, assets, tests)
+- Deployment: `docker/` (compose files, Dockerfiles, nginx.conf, data.sql)
+- CI/CD: `Jenkinsfile`
 
-Introduction:
-Are you ready to embark on a transformative journey into the world of full-stack e-commerce development? 🔥 Brace yourself for an exhilarating adventure, where you’ll harness the dynamic duo of Java21 and SpringBoot 3.2.3 to craft cutting-edge online stores that redefine the digital shopping experience! 🌐💻
+## Local Development
 
-🌟 Java21: The Future of Java
-Java21, the latest incarnation of the Java programming language, has taken the tech world by storm. With its enhanced performance, feature-rich capabilities, and improved developer productivity, it’s the perfect foundation for your journey into e-commerce mastery. 💪💼
+### Backend (Spring Boot)
+- Configuration: [src/main/resources/application.yaml](src/main/resources/application.yaml)
+- Default port: `8081`
+- Start locally (requires JDK 17 and Maven):
+  ```bash
+  ./mvnw spring-boot:run
+  ```
+- Swagger UI: `http://localhost:8081/swagger-ui/index.html`
 
-🚀 SpringBoot 3.2.3: Turbocharge Your Development
-SpringBoot 3.2.3, the latest iteration of the industry-favorite SpringBoot framework, is your turbocharger for full-stack e-commerce development. Its robust back-end capabilities, seamless integration with Java21, and extensive libraries make it the go-to choice for building scalable and secure e-commerce platforms. 🌐🔒
+### Frontend (React + Vite)
+- Working directory: `client`
+- Environment variable: `VITE_API_URL` (defaults to `http://localhost:8081`)
+- Start locally:
+  ```bash
+  cd client
+  npm install
+  npm run dev
+  ```
 
-Welcome to “Building FullStack E-Commerce App using SpringBoot & React” — an immersive learning experience 📚✨ meticulously crafted for developers eager to master the art of full-stack e-commerce application development with SpringBoot and React.
+## Testing & Coverage
 
-Embark on a transformative journey 🚀 where you’ll harness the powerful synergy of SpringBoot’s robust back-end capabilities and React’s dynamic front-end framework. Over the course of 17+ hours, you’ll transition from grasping core concepts 🧩 to applying industry-standard design patterns.
+### Backend (Maven)
+```bash
+./mvnw test
+./mvnw jacoco:report
+```
+Report location: `target/site/jacoco/index.html`
 
-Your comprehensive curriculum includes:
-- 🧠 Mastery of SpringBoot essentials and advanced features
-- 📦 Efficient data access with Spring Data JPA
-- 🔐 Elegant implementation using Specification Pattern
-- 🌐 Mapping Via Builder pattern and MapStruct Libraries
-- 🔄 Data Integration using MySql & Redis via Docker
-- 🔒 Secure user authentication and authorization with Spring Security
-- 🌐 Creating RESTful APIs with Spring Boot for seamless data communication
-- 💻 React best practices, including redux, thunk api, and many more
-- 🎨 Styling with Material UI, roboto, styled, and many more for a polished app.
+### Frontend (Vitest)
+```bash
+cd client
+npm run test
+npm run coverage
+```
 
-Whether you’re an intern, junior developer, senior developer, tech lead, architect, or senior architect, this course offers a tailored path 🛤️ to elevate your expertise. You’ll engage in hands-on projects 🛠️, reinforce your learning with quizzes 📝, and stay updated with yearly content refreshes 🔄.
+## Docker & Deployment
 
-Dive into 15 comprehensive sections, spanning over 206+ videos, all geared towards a pragmatic and thorough understanding of full-stack e-commerce development. Plus, enjoy lifetime access 🎫 to all course materials and future updates.
+### Images
+- Backend: `docker/Dockerfile.backend`
+- Frontend (Nginx static hosting): `docker/Dockerfile.frontend`
+  - Uses `ARG VITE_API_URL` to inject backend API URL during build time
 
-Who Should Enroll?
-- 🎓 Interns: Build a solid foundation for a tech career by applying academic knowledge to real-world projects.
-- 👨‍💻 Junior Developers: Upgrade your skill set with advanced full-stack e-commerce development practices.
-- 👨‍💼 Senior Developers: Lead the way in e-commerce application development.
-- 🚀 Tech Leads: Direct cutting-edge projects with confidence, leveraging SpringBoot and React.
-- 🏗️ Architects: Incorporate insights into your design strategies for innovative, scalable e-commerce solutions.
-- 🌟 Senior Architects: Pioneer the integration of robust architecture, leading high-impact projects with expertise.
+### Docker Compose (EC2 Deployment)
+- File: `docker/docker-compose.ec2.yml`
+- Services: MySQL, Redis, Backend, Frontend (Nginx)
+- Health checks:
+  - MySQL/Redis: Container-level healthcheck
+  - Backend: `/api/products?PageSize=1`
+  - Frontend: `/` returns 200
 
-Course Stats: What You’ll Get
-- 🚀 Fast-Track Your Learning: Dive into a meticulously crafted course designed for maximum engagement and superior learning outcomes.
-- 📚 15 Engaging Sections: Traverse the depths of full-stack e-commerce development, from fundamentals to advanced design patterns and beyond.
-- 🎥 206+ In-Depth Videos: Each video is a stepping stone, providing clear explanations, step-by-step instructions, and real-world applications.
-- ⏰ 17+ Hours of Content: Immerse yourself in a comprehensive curriculum that fits your schedule, accessible anytime, anywhere.
-- 🔄 Yearly Updates: Stay in sync with the latest trends and best practices in SpringBoot and React as technology evolves.
-- 🎫 Lifetime Access: Your one-time enrollment grants you unrestricted access to all current and future course content — forever.
+### Environment Variables (Critical)
+**Frontend:**
+- `VITE_API_URL` (e.g., `http://<EC2_IP>:8081`)
 
-GitHub:- https://github.com/rahulsahay19/Java-React-FullStack
+**Backend (Spring Boot):**
+- `SPRING_DATASOURCE_URL` (e.g., `jdbc:mysql://sportscenter-mysql:3306/sports-center?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC`)
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_REDIS_HOST` / `SPRING_REDIS_PORT`
 
-Enroll here:- https://www.udemy.com/course/building-fullstack-e-commerce-app-using-springboot-react/?couponCode=OFFER-PRICE
+> **Note**: Docker Compose overrides default database configuration from [application.yaml](src/main/resources/application.yaml). Ensure DB name/credentials match runtime environment.
 
-Solution Walkthrough:
+## Jenkins CI/CD Pipeline
+- Pipeline file: `Jenkinsfile`
+- Stages:
+  1. Checkout code
+  2. Build & Test (Maven for backend, Vitest for frontend)
+  3. Docker buildx build (backend/frontend images)
+  4. Push to AWS ECR
+  5. Deploy to EC2 (via `scp` deploy script + `ssh` execution with health checks)
+  6. Health check validation and deployment report
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/110f109d-c2ad-44ca-a487-f22d1f507239)
+### Dynamic IP Resolution
+The pipeline uses AWS CLI to dynamically resolve EC2 public IP for:
+- Frontend image build (injecting `VITE_API_URL`)
+- Deployment and health check stages (`ssh`/`curl` targets)
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/c1adee13-5232-4a96-b804-736122f21190)
+## Runtime Ports
+- Backend: `8081`
+- Frontend: `80`
 
-## Application Flow:
+## Authentication
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/cfbc1499-873f-45ec-a7ed-4cb4dcac8efe)
+### Login API
+- Endpoint: `POST /api/auth/login`
+- Demo credentials (in-memory user for demonstration):
+  - Username: `rahul`
+  - Password: `Password`
+- Successful login returns JWT token
+- Subsequent requests require `Authorization: Bearer <token>` header
 
-## Add To Cart:
+## Troubleshooting
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/44e21af9-82eb-46c5-84c8-33e2f0824073)
+### Login 500 Error
+- Current login uses in-memory user (see [MyConfig](src/main/java/com/ecommerce/sportscenter/config/MyConfig.java)), independent of database
+- If database errors appear in startup logs, verify consistency between Compose and Spring datasource:
+  - DB name: `sports-center` vs `sportscenter`
+  - Username: `admin` vs `root`
+  - Password: `Liminghao2001` vs `password`
+- To use database-backed user authentication:
+  1. Integrate Flyway with `db/migration` scripts for schema/data
+  2. Set `spring.jpa.hibernate.ddl-auto` to `validate`
+  3. Remove in-memory user and configure `UserDetailsService` to use database
 
-## Basket Page:
+### CORS Issues
+- CORS is configured in [CorsConfig](src/main/java/com/ecommerce/sportscenter/config/CorsConfig.java) with `allowedOriginPatterns("*")` and `allowCredentials(true)`
+- Frontend must call backend using the injected `VITE_API_URL`
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/4f8853a2-a65c-418d-968e-3870392e277d)
+### Frontend Container Not Running
+- Deploy script waits for backend health before starting frontend
+- Validates Nginx returns 200 status
 
+### EC2 Public IP Changes
+- **Option 1**: Assign Elastic IP (recommended for production)
+- **Option 2**: Continue with current approach (pipeline dynamically queries IP)
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/ca65abd2-c58b-480d-a4b8-9f4707a11df1)
+## Developer Notes
+- **Database initialization**: `docker/data.sql` can be used for initial data import (mind foreign key constraints)
+- **Naming convention**: Entity `@Table(name=...)` uses PascalCase (e.g., `Product`, `Orders`)
+- **Coverage reporting**: Maven Jacoco and Vitest coverage scripts are ready for CI integration
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/568578a3-df7d-4aa8-93b7-0781e9ff0633)
+## Quick Verification
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/094c8d92-0b20-4f11-85b4-a7b2a6c1e531)
+### Local
+1. Start backend on port `8081`
+2. Start frontend (`npm run dev`), access `http://localhost:5173`
+3. Login with: `rahul` / `Password`
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/9c83b0cf-1552-42e1-bdfd-b9354704e801)
+### Production (EC2)
+- Frontend: `http://<EC2_IP>/`
+- Backend health check: `http://<EC2_IP>:8081/api/products?PageSize=1`
 
-![image](https://github.com/rahulsahay19/Blog-Images/assets/3886381/aea25748-d100-42f3-a9f9-3eae8b0a53e2)
+---
 
-GitHub:- https://github.com/rahulsahay19/Java-React-FullStack
-
-Enroll here:- https://www.udemy.com/course/building-fullstack-e-commerce-app-using-springboot-react/?couponCode=OFFER-PRICE
-
-Thanks for Joining me. Happy Learning.
+**Project Highlights for Job Applications:**
+- Full-stack development with modern frameworks (Spring Boot 3, React)
+- Complete CI/CD automation with Jenkins, Docker multi-platform builds
+- Cloud deployment on AWS (ECR, EC2)
+- Comprehensive testing suite with code coverage reporting
+- Production-ready architecture with health checks, Redis caching, and JWT security
